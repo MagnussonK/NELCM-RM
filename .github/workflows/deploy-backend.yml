@@ -36,8 +36,19 @@ jobs:
 
       - name: Manually create deployment package
         run: |
+          # Copy your Python code
           cp app.py ./package/
           cp lambda.py ./package/
+          
+          # Create a 'lib' directory for the driver files
+          mkdir -p ./package/lib
+          
+          # Copy the necessary system libraries into the package
+          cp /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.so ./package/lib/
+          cp /usr/lib/x86_64-linux-gnu/libodbc.so.2 ./package/lib/
+          cp /usr/lib/x86_64-linux-gnu/libodbcinst.so.2 ./package/lib/
+          
+          # Zip everything together
           cd package
           zip -r ../artifact.zip .
 

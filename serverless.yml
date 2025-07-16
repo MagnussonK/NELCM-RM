@@ -6,6 +6,11 @@ provider:
   region: us-east-1
   httpApi:
     cors: true
+  
+  # This tells Lambda where to find the driver files at runtime
+  environment:
+    LD_LIBRARY_PATH: /var/task/lib
+
   iam:
     role:
       statements:
@@ -23,5 +28,4 @@ functions:
           method: any
 
 package:
-  # This tells Serverless to use a zip file we will create, instead of building its own.
   artifact: artifact.zip
