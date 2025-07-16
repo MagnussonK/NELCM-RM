@@ -31,6 +31,14 @@ jobs:
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 
+      - name: DEBUG - Find ODBC Driver Files
+        run: |
+          echo "--- Searching for msodbcsql library ---"
+          find /opt -name "libmsodbcsql-18.so"
+          echo "--- Searching for libodbc library ---"
+          find /usr -name "libodbc.so.2"
+          echo "--- Done searching ---"
+
       - name: Install Python dependencies into a directory
         run: pip install -r requirements.txt -t ./package
 
