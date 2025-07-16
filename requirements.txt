@@ -1,0 +1,4 @@
+Flask
+pyodbc
+Flask-Cors
+boto3
