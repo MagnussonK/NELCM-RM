@@ -2,16 +2,18 @@
 
 # Stage 1: The Builder
 # This stage installs all dependencies in an environment that matches Lambda
-FROM public.ecr.aws/lambda/python:3.9 as builder
+FROM public.ecr.aws/lambda/python:3.9 AS builder
 
-# Install the official Microsoft ODBC Driver 18 and unixODBC for Amazon Linux 2
+# Install Microsoft ODBC Driver 18 and unixODBC for Amazon Linux 2
 RUN yum update -y && \
     curl https://packages.microsoft.com/config/rhel/7/prod.repo | tee /etc/yum.repos.d/mssql-release.repo && \
-    ACCEPT_EULA=Y yum install -y msodbcsql18 unixODBC-devel
+    ACCEPT_EULA=Y yum install -y msodbcsql18 && \
+    yum install -y unixODBC-devel
 
-# VERIFICATION STEP: This will cause the build to fail if the libraries are not found
-RUN find /opt/microsoft -name "libmsodbcsql-18.so" | grep . && \
-    find /usr/lib64 -name "libodbc.so.2" | grep .
+# VERIFICATION STEP: Check for files and fail if not found.
+RUN echo "Verifying driver installations..." && \
+    find /opt/microsoft -name "libmsodbcsql-18.so" && \
+    find /usr/lib64 -name "libodbc.so.2"
 
 # Install Python requirements
 COPY requirements.txt .
@@ -25,7 +27,8 @@ FROM public.ecr.aws/lambda/python:3.9
 RUN mkdir -p /var/task/lib
 
 # Copy all necessary system libraries from the builder stage into the 'lib' directory
-COPY --from=builder /opt/microsoft/msodbcsql18/lib64/* /var/task/lib/
+# Note: The exact name includes version numbers, so we use a wildcard *.
+COPY --from=builder /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so* /var/task/lib/
 COPY --from=builder /usr/lib64/libodbc.so.* /var/task/lib/
 COPY --from=builder /usr/lib64/libodbcinst.so.* /var/task/lib/
 COPY --from=builder /usr/lib64/libltdl.so.* /var/task/lib/
