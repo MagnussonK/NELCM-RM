@@ -28,4 +28,4 @@ functions:
           method: any
 
 package:
-  artifact: artifact2.zip
+  artifact: artifact.zip

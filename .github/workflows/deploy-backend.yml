@@ -41,7 +41,7 @@ jobs:
           cp app.py ./package/
           cp lambda.py ./package/
           mkdir -p ./package/lib
-          cp /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so ./package/lib/
+          #cp /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so ./package/lib/
           cp /usr/lib/x86_64-linux-gnu/libodbc.so.2 ./package/lib/
           cp /usr/lib/x86_64-linux-gnu/libodbcinst.so.2 ./package/lib/
           cd package
