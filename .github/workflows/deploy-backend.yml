@@ -25,30 +25,23 @@ jobs:
       - name: Install MS ODBC Driver for SQL Server
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl apt-transport-https
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-          curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get install -y curl gnupg
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
           sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc-dev
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 
       - name: Install Python dependencies into a directory
         run: pip install -r requirements.txt -t ./package
 
       - name: Manually create deployment package
         run: |
-          # Copy your Python code
           cp app.py ./package/
           cp lambda.py ./package/
-          
-          # Create a 'lib' directory for the driver files
           mkdir -p ./package/lib
-          
-          # Copy the necessary system libraries into the package
-          cp /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.so ./package/lib/
+          cp /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so ./package/lib/
           cp /usr/lib/x86_64-linux-gnu/libodbc.so.2 ./package/lib/
           cp /usr/lib/x86_64-linux-gnu/libodbcinst.so.2 ./package/lib/
-          
-          # Zip everything together
           cd package
           zip -r ../artifact.zip .
 
