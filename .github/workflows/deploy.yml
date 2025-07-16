@@ -38,7 +38,7 @@ jobs:
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
-          region: us-east-1 # The region for your Elastic Beanstalk environment
+          aws-region: us-east-1 # The region for your Elastic Beanstalk environment
 
       # 6. Deploy to Elastic Beanstalk
       - name: Deploy to Elastic Beanstalk
