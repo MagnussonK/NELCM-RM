@@ -119,7 +119,7 @@
             "Properties": {
               "Code": {
                 "S3Bucket": "serverless-framework-deployments-us-east-1-173d1e7a-4a2e",
-                "S3Key": "serverless/nelcm-record-manager-api/dev/1752691005547-2025-07-16T18:36:45.547Z/nelcm-record-manager-api.zip"
+                "S3Key": "serverless/nelcm-record-manager-api/dev/1752691892976-2025-07-16T18:51:32.976Z/nelcm-record-manager-api.zip"
               },
               "Handler": "lambda.handler",
               "Runtime": "python3.9",
@@ -137,14 +137,14 @@
               "ApiLogGroup"
             ]
           },
-          "ApiLambdaVersionyVhST2UgSVxxU08TNo7RfRcxNz5BPbv1IsRG8trxHI": {
+          "ApiLambdaVersiongBHQuXuZKSIUeu6YPlVgHxgqLLD9DhWA6yZdrO83E": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "ApiLambdaFunction"
               },
-              "CodeSha256": "xCRkWafWsXIWgL2rkCy32Hydf09G6AjU0/ZHu6m01R0="
+              "CodeSha256": "xHWfT2f6l1H7zWOAaNcBab2rmBj4Jln5033QbVrYDWc="
             }
           },
           "HttpApi": {
@@ -218,13 +218,13 @@
               "TimeoutInMillis": 30000
             }
           },
-          "HttpApiRouteAnyProxyVar": {
+          "HttpApiRouteAnyApiProxyVar": {
             "Type": "AWS::ApiGatewayV2::Route",
             "Properties": {
               "ApiId": {
                 "Ref": "HttpApi"
               },
-              "RouteKey": "ANY /{proxy+}",
+              "RouteKey": "ANY /api/{proxy+}",
               "Target": {
                 "Fn::Join": [
                   "/",
@@ -250,7 +250,7 @@
           "ApiLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "ApiLambdaVersionyVhST2UgSVxxU08TNo7RfRcxNz5BPbv1IsRG8trxHI"
+              "Ref": "ApiLambdaVersiongBHQuXuZKSIUeu6YPlVgHxgqLLD9DhWA6yZdrO83E"
             },
             "Export": {
               "Name": "sls-nelcm-record-manager-api-dev-ApiLambdaFunctionQualifiedArn"
@@ -301,11 +301,12 @@
         "events": [
           {
             "httpApi": {
-              "path": "/{proxy+}",
-              "method": "any"
+              "path": "/api/{proxy+}",
+              "method": "any",
+              "cors": true
             },
             "resolvedMethod": "ANY",
-            "resolvedPath": "/{proxy+}"
+            "resolvedPath": "/api/{proxy+}"
           }
         ],
         "name": "nelcm-record-manager-api-dev-api",
@@ -314,7 +315,7 @@
         "timeout": 6,
         "runtime": "python3.9",
         "vpc": {},
-        "versionLogicalId": "ApiLambdaVersionyVhST2UgSVxxU08TNo7RfRcxNz5BPbv1IsRG8trxHI"
+        "versionLogicalId": "ApiLambdaVersiongBHQuXuZKSIUeu6YPlVgHxgqLLD9DhWA6yZdrO83E"
       }
     },
     "configValidationMode": "warn",
@@ -334,7 +335,7 @@
         "artifactsS3KeyDirname": "serverless/nelcm-record-manager-api/dev/code-artifacts",
         "deploymentBucket": "serverless-framework-deployments-us-east-1-173d1e7a-4a2e",
         "artifact": "C:\\Projects\\NELCM\\NELCM-RM\\.serverless\\nelcm-record-manager-api.zip",
-        "artifactDirectoryName": "serverless/nelcm-record-manager-api/dev/1752691005547-2025-07-16T18:36:45.547Z"
+        "artifactDirectoryName": "serverless/nelcm-record-manager-api/dev/1752691892976-2025-07-16T18:51:32.976Z"
       },
       "functions": {
         "$ref": "$[\"service\"][\"functions\"]"
@@ -346,7 +347,7 @@
     "artifact": "C:\\Projects\\NELCM\\NELCM-RM\\.serverless\\nelcm-record-manager-api.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/nelcm-record-manager-api/dev/1752691005547-2025-07-16T18:36:45.547Z",
+    "artifactDirectoryName": "serverless/nelcm-record-manager-api/dev/1752691892976-2025-07-16T18:51:32.976Z",
     "artifact": "nelcm-record-manager-api.zip"
   }
 }

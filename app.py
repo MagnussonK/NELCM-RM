@@ -40,7 +40,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 app = Flask(__name__)
 # This specifies that only your website can access the API
-#CORS(app, resources={r"/api/*": {"origins": ["http://www.kedainsights.com", "http://localhost:8000", "https://main.d1u1ug0583al74.amplifyapp.com"]}})
+#CORS(app, resources={r"/api/*": {"origins": ["http://www.kedainsights.com", "http://localhost:8000", "https://main.d16dydmehoeryz.amplifyapp.com"]}})
 CORS(app)
 
 # --- Database Configuration ---
