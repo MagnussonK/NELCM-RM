@@ -1,17 +1,11 @@
-# lambda.py (Temporary Debugging Version)
-import json
-import serverless_wsgi
+# lambda.py (Final Correct Version)
+from serverless_wsgi import handle_request
+from app import app
 
 def handler(event, context):
-    # This will list all available functions/attributes in the module
-    available_names = dir(serverless_wsgi)
-    
-    print(f"Available names in serverless_wsgi: {available_names}")
-    
-    return {
-        'statusCode': 200,
-        'body': json.dumps({
-            'message': 'Debugging serverless_wsgi module.',
-            'available_names': available_names
-        })
-    }
+    """
+    This is the handler that will be called by AWS Lambda.
+    It uses the correct 'handle_request' function to process the event
+    with your Flask application.
+    """
+    return handle_request(app, event, context)
