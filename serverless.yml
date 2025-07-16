@@ -20,9 +20,9 @@ provider:
             - "secretsmanager:GetSecretValue"
           Resource: "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
   vpc:
-    securityGroupId:
+    securityGroupIds:
       - sg-087d696b0a5c38093 # Replace with your Security Group ID
-    subnetId:
+    subnetIds:
       - subnet-0c28480ffa2575501 # Replace with your first Subnet ID
       - subnet-06b38eab5381ea78f # Replace with your second Subnet ID
 
