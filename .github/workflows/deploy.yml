@@ -1,4 +1,4 @@
-name: Deploy Backend via Serverless Framework
+name: Deploy via Serverless Framework
 
 on:
   push:
