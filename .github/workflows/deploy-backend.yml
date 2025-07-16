@@ -48,4 +48,4 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Deploy with Serverless Framework
-        run: serverless deploy --stage dev
+        run: serverless deploy
