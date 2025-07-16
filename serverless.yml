@@ -6,16 +6,23 @@ provider:
   name: aws
   runtime: python3.9
   region: us-east-1
-  
+
+  # CORS configuration for HTTP APIs goes here
+  httpApi:
+    cors: true
+
+  # Defines the permissions for the Lambda function
   iam:
     role:
       statements:
         - Effect: "Allow"
           Action:
             - "secretsmanager:GetSecretValue"
+          # Allows access to the specific secret for your database
           Resource: "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
 
 package:
+  # Excludes unnecessary files to keep the deployment package small
   patterns:
     - '!node_modules/**'
     - '!.serverless/**'
@@ -23,10 +30,10 @@ package:
     - '!.venv/**'
 
 functions:
+  # This is the main function that will run your Flask app
   api:
-    handler: lambda.handler
+    handler: lambda.handler # Points to the handler function in lambda.py
     events:
-      - httpApi:
+      - httpApi: # The cors line is removed from here
           path: /api/{proxy+}
           method: any
-          cors: true # This line solves the CORS error
