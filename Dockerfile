@@ -1,26 +1,34 @@
 # Dockerfile
 
-# Stage 1: The Builder - Installs all dependencies
+# Stage 1: The Builder
+# This stage installs all dependencies in an environment that matches Lambda
 FROM public.ecr.aws/lambda/python:3.9 as builder
 
-# Install system-level dependencies for pyodbc using yum
-RUN yum install -y gcc-c++ unixODBC-devel
+# Install the official Microsoft ODBC Driver 18 and unixODBC for Amazon Linux 2
+RUN yum update -y && \
+    curl https://packages.microsoft.com/config/rhel/7/prod.repo | tee /etc/yum.repos.d/mssql-release.repo && \
+    ACCEPT_EULA=Y yum install -y msodbcsql18 unixODBC-devel
 
-# Install Python requirements into a target directory
+# VERIFICATION STEP: This will cause the build to fail if the libraries are not found
+RUN find /opt/microsoft -name "libmsodbcsql-18.so" | grep . && \
+    find /usr/lib64 -name "libodbc.so.2" | grep .
+
+# Install Python requirements
 COPY requirements.txt .
 RUN pip install -r requirements.txt -t /asset
 
-
-# Stage 2: The Final Image - Creates the lean, final image for Lambda
+# Stage 2: The Final Image
+# This stage creates the clean, final image for Lambda
 FROM public.ecr.aws/lambda/python:3.9
 
-# Create a 'lib' directory in our final image
+# Create a 'lib' directory in our final image for the drivers
 RUN mkdir -p /var/task/lib
 
-# Copy the required system libraries from the builder stage into the 'lib' directory
-COPY --from=builder /usr/lib64/libodbc.so.2 /var/task/lib/
-COPY --from=builder /usr/lib64/libodbcinst.so.2 /var/task/lib/
-COPY --from=builder /usr/lib64/libltdl.so.7 /var/task/lib/
+# Copy all necessary system libraries from the builder stage into the 'lib' directory
+COPY --from=builder /opt/microsoft/msodbcsql18/lib64/* /var/task/lib/
+COPY --from=builder /usr/lib64/libodbc.so.* /var/task/lib/
+COPY --from=builder /usr/lib64/libodbcinst.so.* /var/task/lib/
+COPY --from=builder /usr/lib64/libltdl.so.* /var/task/lib/
 
 # Copy the installed Python packages from the builder stage
 COPY --from=builder /asset /var/task/
