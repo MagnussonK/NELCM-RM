@@ -5,11 +5,11 @@ name: Deploy to AWS Elastic Beanstalk
 on:
   push:
     branches:
-      - main
+      - main # Triggers the workflow on push to the main branch
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Use the latest Ubuntu runner
     
     steps:
       # 1. Checkout the repository code
@@ -32,14 +32,23 @@ jobs:
       - name: Create ZIP file for deployment
         run: zip deploy.zip app.py index.html logo.png requirements.txt
 
-      # 5. Deploy to Elastic Beanstalk
+      # 5. Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1 # The region for your Elastic Beanstalk environment
+
+      # 6. Deploy to Elastic Beanstalk
       - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v22
         with:
-          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          application_name: 'nelcm-record-manager'
-          environment_name: 'nelcm-record-manager-env'
-          region: 'us-east-1'
-          version_label: "${{ github.sha }}-${{ github.run_number }}"
-          deployment_package: deploy.zip
+          # --- YOU MUST CHANGE THESE VALUES ---
+          application_name: 'nelcm-rm' # Your Elastic Beanstalk Application Name
+          environment_name: 'Nelcm-rm-env' # Your Elastic Beanstalk Environment Name
+          # ------------------------------------
+          
+          region: us-east-1 # The same region as above
+          version_label: "${{ github.sha }}-${{ github.run_number }}" # Creates a unique version label
+          deployment_package: deploy.zip # The zip file created in step 4
