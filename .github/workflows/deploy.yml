@@ -34,7 +34,7 @@ jobs:
 
       - name: DEBUG - Check if AWS_ACCESS_KEY_ID exists
         run: echo "Secret is present: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}"
-        
+
       # 5. Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
