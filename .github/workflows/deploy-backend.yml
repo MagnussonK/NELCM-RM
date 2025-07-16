@@ -34,7 +34,7 @@ jobs:
       - name: DEBUG - Find ODBC Driver Files
         run: |
           echo "--- Searching for msodbcsql library ---"
-          find /opt -name "libmsodbcsql-18.so"
+          find /opt -name "libmsodbcsql-17.so"
           echo "--- Searching for libodbc library ---"
           find /usr -name "libodbc.so.2"
           echo "--- Done searching ---"
