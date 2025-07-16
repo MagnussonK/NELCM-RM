@@ -8,6 +8,7 @@ on:
       - '**.py'
       - 'requirements.txt'
       - 'serverless.yml'
+      - '.github/workflows/deploy-backend.yml'
 
 jobs:
   deploy-backend:
