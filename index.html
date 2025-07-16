@@ -987,8 +987,7 @@
 
         // --- Global Configuration ---
         
-		const HttpApiID = 'fxwl48gnrc"
-		const BaseApiUrl = 'https://${HttpApiID}.execute-api.us-east-1.amazonaws.com/api';
+		const BASE_API_URL = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api';
 
         // Global variables for Add Visit View
         let currentAddVisitMemberId = null;
@@ -1247,11 +1246,10 @@
          */
         async function fetchVisitsTodayCount() {
             // This is the correct URL for the API endpoint
-            #const backendApiUrl = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/visits/today/count';
-			const backendApiUrl = '${BaseApiUrl}/visits/today/count';
+            			
             try {
                 // Use the same variable name here
-                const response = await fetch(backendApiUrl);
+                const response = await fetch(`${BASE_API_URL}/visits/today/count`);
         
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -1291,9 +1289,8 @@
          */
         async function triggerMembershipExpiryUpdate() {
             console.log('Triggering backend membership expiry update...');
-            const backendApiUrl = '${BaseApiUrl}/update_expired_memberships';
             try {
-                const response = await fetch(backendApiUrl, { method: 'PUT' });
+                const response = await fetch(`${BASE_API_URL}/update_expired_memberships`, { method: 'PUT' });
                 if (!response.ok) {
                     const errorData = await response.json();
                     console.error('Backend expiry update error:', errorData);
@@ -1544,10 +1541,9 @@
             homeRefreshSpinner.classList.remove('hidden');
         
             // You define the URL here
-            const backendApiUrl = '${BaseApiUrl}/data';
             try {
                 // You MUST use the same variable name here
-                const response = await fetch(backendApiUrl);
+                const response = await fetch(`${BASE_API_URL}/data`);
         
                 if (!response.ok) {
                     const errorData = await response.json();
@@ -1593,9 +1589,7 @@
                     showMessage(`Primary member not found for family ID: ${familyId}. Cannot record visits.`, "error");
                     return;
                 }
-
-                const backendApiUrl = '${BaseApiUrl}/add_visit';
-                let successfulVisits = 0;
+				let successfulVisits = 0;
                 let failedVisits = 0;
 
                 for (let i = 0; i < numPeople; i++) {
@@ -1609,7 +1603,7 @@
                         visit_datetime: formattedDateTime
                     };
 
-                    const response = await fetch(backendApiUrl, {
+                    const response = await fetch(`${BASE_API_URL}/add_visit`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(visitData)
@@ -1835,7 +1829,7 @@
             };
             const backendApiUrl = '${BaseApiUrl}/add_record';
             try {
-                const response = await fetch(backendApiUrl, {
+					const response = await fetch(`${BASE_API_URL}/add_record`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(recordData)
@@ -2011,8 +2005,7 @@
                     is_primary: true // Ensure backend knows this is a primary member update
                 };
 
-                const backendApiUrl = `${BaseApiUrl}/api/update_record/${primaryMemberRecord.member_id}`;
-                const response = await fetch(backendApiUrl, {
+                const response = await fetch(`${BASE_API_URL}/update_record/${primaryMemberRecord.member_id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatedData)
@@ -2189,10 +2182,8 @@
                 recordData.active_flag = recordDetailsActiveFlagCheckbox.checked;
             }
 
-            const backendApiUrl = `${BaseApiUrl}/api/update_record/${currentRecordDetailsFamilyId}`;
-
             try {
-                const response = await fetch(backendApiUrl, {
+                const response = await fetch(`${BASE_API_URL}/update_record/${currentRecordDetailsFamilyId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(recordData)
@@ -2229,10 +2220,8 @@
             if (confirm(confirmMessage)) {
                 globalLoadingIndicator.classList.remove('hidden');
                 const requestBody = currentRecordDetailsIsPrimary ? {} : { name: currentRecordDetailsName, last_name: currentRecordDetailsLastName };
-                const backendApiUrl = `${BaseApiUrl}/api/delete_record/${currentRecordDetailsFamilyId}`;
-
                 try {
-                    const response = await fetch(backendApiUrl, {
+                    const response = await fetch(`${BASE_API_URL}/delete_record/${currentRecordDetailsFamilyId}`, {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(requestBody)
@@ -2315,9 +2304,8 @@
         async function deleteSecondaryMember(memberId, name, lastName) {
             if (confirm(`Are you sure you want to delete ${name} ${lastName} from this family?`)) {
                 globalLoadingIndicator.classList.remove('hidden');
-                const backendApiUrl = `${BaseApiUrl}/api/delete_record/${memberId}`;
                 try {
-                    const response = await fetch(backendApiUrl, {
+                    const response = await fetch(`${BASE_API_URL}/delete_record/${memberId}`, {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name: name, last_name: lastName })
@@ -2367,9 +2355,8 @@
                 birthday: document.getElementById('manageSecondaryBirthday').value || null,
                 gender: genderValue,
             };
-            const backendApiUrl = '${BaseApiUrl}/add_secondary_member';
             try {
-                const response = await fetch(backendApiUrl, {
+                const response = await fetch(`${BASE_API_URL}/add_secondary_member`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(recordData)
@@ -2436,7 +2423,7 @@
                 visit_datetime: formattedDateTime
             };
             try {
-                const response = await fetch('${BaseApiUrl}/add_visit', {
+                const response = await fetch(`${BASE_API_URL}/add_visit`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(visitData)
@@ -2504,8 +2491,7 @@
             currentCalendarDate = new Date();
 
             try {
-                const backendApiUrl = `/api/visits/${encodeURIComponent(memberId)}/${encodeURIComponent(name)}/${encodeURIComponent(lastName)}`;
-                const response = await fetch(backendApiUrl);
+                const response = await fetch(`${BASE_API_URL}/visits/${encodeURIComponent(memberId)}/${encodeURIComponent(name)}/${encodeURIComponent(lastName)}`);
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
