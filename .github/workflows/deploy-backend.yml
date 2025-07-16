@@ -5,9 +5,6 @@ on:
     branches:
       - main
     paths:
-      - '**.py'
-      - 'requirements.txt'
-      - 'serverless.yml'
       - 'deploy-backend.yml'
 
 jobs:

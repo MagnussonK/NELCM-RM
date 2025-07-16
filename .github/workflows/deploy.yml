@@ -10,7 +10,6 @@ on:
       - 'lambda.py'
       - 'requirements.txt'
       - 'serverless.yml'
-      - 'deploy-backend.yml'
 
 jobs:
   deploy-backend:
