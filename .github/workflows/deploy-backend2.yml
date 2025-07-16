@@ -1,0 +1,71 @@
+name: Deploy Backend via Serverless Framework
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.py'
+      - 'requirements.txt'
+      - 'serverless.yml'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install MS ODBC Driver for SQL Server
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl gnupg libltdl7
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
+
+      - name: Install Python dependencies and list contents
+        run: |
+          pip install -r requirements.txt -t ./package
+          echo "--- Listing contents of './package' directory: ---"
+          ls -lR ./package
+
+      - name: Manually create and list deployment package
+        run: |
+          cp app.py ./package/
+          cp lambda.py ./package/
+          mkdir -p ./package/lib
+          cp /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so ./package/lib/
+          cp /usr/lib/x86_64-linux-gnu/libodbc.so.2 ./package/lib/
+          cp /usr/lib/x86_64-linux-gnu/libodbcinst.so.2 ./package/lib/
+          cp /usr/lib/x86_64-linux-gnu/libltdl.so.7 ./package/lib/
+          cd package
+          zip -r ../artifact.zip .
+          echo "--- Listing contents of 'artifact.zip': ---"
+          unzip -l ../artifact.zip
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Install Serverless CLI
+        run: npm install -g serverless@^3
+
+      - name: Deploy with Serverless Framework
+        run: serverless deploy
