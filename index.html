@@ -986,7 +986,7 @@
         let currentIsPrimary = false; // Used by recordDetails to determine editable fields
 
         // --- Global Configuration ---
-        const BASE_API_URL = 'https://zjt0vxnd20.execute-api.us-east-1.amazonaws.com';
+        const BASE_API_URL = 'https://7nlzh5idy3.execute-api.us-east-1.amazonaws.com';
 
         // Global variables for Add Visit View
         let currentAddVisitMemberId = null;
@@ -1288,7 +1288,7 @@
          */
         async function triggerMembershipExpiryUpdate() {
             console.log('Triggering backend membership expiry update...');
-            const apiBaseUrl = 'https://zjt0vxnd20.execute-api.us-east-1.amazonaws.com/api/update_expired_memberships';
+            const apiBaseUrl = 'https://7nlzh5idy3.execute-api.us-east-1.amazonaws.com/api/update_expired_memberships';
             try {
                 const response = await fetch(backendApiUrl, { method: 'PUT' });
                 if (!response.ok) {
@@ -1541,7 +1541,7 @@
             homeRefreshSpinner.classList.remove('hidden');
         
             // You define the URL here
-            const apiBaseUrl = 'https://zjt0vxnd20.execute-api.us-east-1.amazonaws.com/api/data';
+            const apiBaseUrl = 'https://7nlzh5idy3.execute-api.us-east-1.amazonaws.com/api/data';
             try {
                 // You MUST use the same variable name here
                 const response = await fetch(apiBaseUrl);
@@ -1591,7 +1591,7 @@
                     return;
                 }
 
-                const apiBaseUrl = 'https://zjt0vxnd20.execute-api.us-east-1.amazonaws.com/api/add_visit';
+                const apiBaseUrl = 'https://7nlzh5idy3.execute-api.us-east-1.amazonaws.com/api/add_visit';
                 let successfulVisits = 0;
                 let failedVisits = 0;
 
@@ -1830,7 +1830,7 @@
                 primary_member: primaryMember,
                 secondary_member: secondaryMember
             };
-            const apiBaseUrl = 'https://zjt0vxnd20.execute-api.us-east-1.amazonaws.com/api/add_record';
+            const apiBaseUrl = 'https://7nlzh5idy3.execute-api.us-east-1.amazonaws.com/api/add_record';
             try {
                 const response = await fetch(backendApiUrl, {
                     method: 'POST',
@@ -2364,7 +2364,7 @@
                 birthday: document.getElementById('manageSecondaryBirthday').value || null,
                 gender: genderValue,
             };
-            const apiBaseUrl = 'https://zjt0vxnd20.execute-api.us-east-1.amazonaws.com/api/add_secondary_member';
+            const apiBaseUrl = 'https://7nlzh5idy3.execute-api.us-east-1.amazonaws.com/api/add_secondary_member';
             try {
                 const response = await fetch(backendApiUrl, {
                     method: 'POST',
