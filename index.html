@@ -986,7 +986,9 @@
         let currentIsPrimary = false; // Used by recordDetails to determine editable fields
 
         // --- Global Configuration ---
-        const BASE_API_URL = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/';
+        
+		const HttpApiID = 'fxwl48gnrc"
+		const BaseApiUrl = 'https://${HttpApiID}.execute-api.us-east-1.amazonaws.com/api';
 
         // Global variables for Add Visit View
         let currentAddVisitMemberId = null;
@@ -1245,7 +1247,8 @@
          */
         async function fetchVisitsTodayCount() {
             // This is the correct URL for the API endpoint
-            const backendApiUrl = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/visits/today/count';
+            #const backendApiUrl = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/visits/today/count';
+			const backendApiUrl = '${BaseApiUrl}/visits/today/count';
             try {
                 // Use the same variable name here
                 const response = await fetch(backendApiUrl);
@@ -1288,7 +1291,7 @@
          */
         async function triggerMembershipExpiryUpdate() {
             console.log('Triggering backend membership expiry update...');
-            const apiBaseUrl = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/update_expired_memberships';
+            const backendApiUrl = '${BaseApiUrl}/update_expired_memberships';
             try {
                 const response = await fetch(backendApiUrl, { method: 'PUT' });
                 if (!response.ok) {
@@ -1541,10 +1544,10 @@
             homeRefreshSpinner.classList.remove('hidden');
         
             // You define the URL here
-            const apiBaseUrl = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/data';
+            const backendApiUrl = '${BaseApiUrl}/data';
             try {
                 // You MUST use the same variable name here
-                const response = await fetch(apiBaseUrl);
+                const response = await fetch(backendApiUrl);
         
                 if (!response.ok) {
                     const errorData = await response.json();
@@ -1591,7 +1594,7 @@
                     return;
                 }
 
-                const apiBaseUrl = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/add_visit';
+                const backendApiUrl = '${BaseApiUrl}/add_visit';
                 let successfulVisits = 0;
                 let failedVisits = 0;
 
@@ -1830,7 +1833,7 @@
                 primary_member: primaryMember,
                 secondary_member: secondaryMember
             };
-            const apiBaseUrl = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/add_record';
+            const backendApiUrl = '${BaseApiUrl}/add_record';
             try {
                 const response = await fetch(backendApiUrl, {
                     method: 'POST',
@@ -2008,7 +2011,7 @@
                     is_primary: true // Ensure backend knows this is a primary member update
                 };
 
-                const backendApiUrl = `/api/update_record/${primaryMemberRecord.member_id}`;
+                const backendApiUrl = `${BaseApiUrl}/api/update_record/${primaryMemberRecord.member_id}`;
                 const response = await fetch(backendApiUrl, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -2186,7 +2189,7 @@
                 recordData.active_flag = recordDetailsActiveFlagCheckbox.checked;
             }
 
-            const backendApiUrl = `/api/update_record/${currentRecordDetailsFamilyId}`;
+            const backendApiUrl = `${BaseApiUrl}/api/update_record/${currentRecordDetailsFamilyId}`;
 
             try {
                 const response = await fetch(backendApiUrl, {
@@ -2226,7 +2229,7 @@
             if (confirm(confirmMessage)) {
                 globalLoadingIndicator.classList.remove('hidden');
                 const requestBody = currentRecordDetailsIsPrimary ? {} : { name: currentRecordDetailsName, last_name: currentRecordDetailsLastName };
-                const backendApiUrl = `/api/delete_record/${currentRecordDetailsFamilyId}`;
+                const backendApiUrl = `${BaseApiUrl}/api/delete_record/${currentRecordDetailsFamilyId}`;
 
                 try {
                     const response = await fetch(backendApiUrl, {
@@ -2312,7 +2315,7 @@
         async function deleteSecondaryMember(memberId, name, lastName) {
             if (confirm(`Are you sure you want to delete ${name} ${lastName} from this family?`)) {
                 globalLoadingIndicator.classList.remove('hidden');
-                const backendApiUrl = `/api/delete_record/${memberId}`;
+                const backendApiUrl = `${BaseApiUrl}/api/delete_record/${memberId}`;
                 try {
                     const response = await fetch(backendApiUrl, {
                         method: 'DELETE',
@@ -2364,7 +2367,7 @@
                 birthday: document.getElementById('manageSecondaryBirthday').value || null,
                 gender: genderValue,
             };
-            const apiBaseUrl = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/add_secondary_member';
+            const backendApiUrl = '${BaseApiUrl}/add_secondary_member';
             try {
                 const response = await fetch(backendApiUrl, {
                     method: 'POST',
@@ -2433,7 +2436,7 @@
                 visit_datetime: formattedDateTime
             };
             try {
-                const response = await fetch('https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/dev/api/add_visit', {
+                const response = await fetch('${BaseApiUrl}/add_visit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(visitData)
