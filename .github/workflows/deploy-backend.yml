@@ -1,27 +1,15 @@
-name: Deploy Backend via Serverless Framework
+name: DEBUG - Find ODBC Driver Paths
 
 on:
   push:
     branches:
       - main
-    paths:
-      - '**.py'
-      - 'requirements.txt'
-      - 'serverless.yml'
 
 jobs:
-  deploy-backend:
+  find-files:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
       - name: Install MS ODBC Driver for SQL Server
         run: |
           sudo apt-get update
@@ -31,42 +19,13 @@ jobs:
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 
-      - name: DEBUG - Find ODBC Driver Files
+      - name: Locate the critical library files
         run: |
-          echo "--- Searching for msodbcsql library ---"
-          find /opt -name "libmsodbcsql-17.so"
-          echo "--- Searching for libodbc library ---"
-          find /usr -name "libodbc.so.2"
-          echo "--- Done searching ---"
-
-      - name: Install Python dependencies into a directory
-        run: pip install -r requirements.txt -t ./package
-
-      - name: Manually create deployment package
-        run: |
-          cp app.py ./package/
-          cp lambda.py ./package/
-          mkdir -p ./package/lib
-          cp /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so ./package/lib/
-          cp /usr/lib/x86_64-linux-gnu/libodbc.so.2 ./package/lib/
-          cp /usr/lib/x86_64-linux-gnu/libodbcinst.so.2 ./package/lib/
-          cd package
-          zip -r ../artifact.zip .
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
+          echo "--- Location of libodbc.so.2 ---"
+          find / -name "libodbc.so.2" 2>/dev/null
           
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Install Serverless CLI
-        run: npm install -g serverless@^3
-
-      - name: Deploy with Serverless Framework
-        run: serverless deploy
+          echo "--- Location of libodbcinst.so.2 ---"
+          find / -name "libodbcinst.so.2" 2>/dev/null
+          
+          echo "--- Location of libmsodbcsql-18.so ---"
+          find / -name "libmsodbcsql-18.so" 2>/dev/null
