@@ -986,7 +986,7 @@
         let currentIsPrimary = false; // Used by recordDetails to determine editable fields
 
         // --- Global Configuration ---
-        const BASE_API_URL = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com';
+        const BASE_API_URL = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/';
 
         // Global variables for Add Visit View
         let currentAddVisitMemberId = null;
@@ -1245,7 +1245,7 @@
          */
         async function fetchVisitsTodayCount() {
             // This is the correct URL for the API endpoint
-            const backendApiUrl = 'https://d2dhzzfsa3.execute-api.us-east-1.amazonaws.com/dev/api/visits/today/count';
+            const backendApiUrl = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api/visits/today/count';
             try {
                 // Use the same variable name here
                 const response = await fetch(backendApiUrl);
@@ -2433,7 +2433,7 @@
                 visit_datetime: formattedDateTime
             };
             try {
-                const response = await fetch('https://d2dhzzfsa3.execute-api.us-east-1.amazonaws.com/dev/api/add_visit', {
+                const response = await fetch('https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/dev/api/add_visit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(visitData)
