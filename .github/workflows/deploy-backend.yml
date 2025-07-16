@@ -22,6 +22,11 @@ jobs:
         with:
           python-version: '3.9'
 
+      - name: Install ODBC System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev
+
       - name: Install Python dependencies into a directory
         run: pip install -r requirements.txt -t ./package
 
