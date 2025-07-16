@@ -34,10 +34,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Install dependencies
+      - name: Install Framework and Plugin
         run: |
           npm install -g serverless@^3
-          pip install -r requirements.txt
+          serverless plugin install -n serverless-python-requirements
 
       - name: Deploy with Serverless Framework
+        # The plugin will automatically handle installing requirements.txt
         run: serverless deploy
