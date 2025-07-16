@@ -1,18 +1,11 @@
 service: nelcm-record-manager-api
 
-plugins:
-  - serverless-python-requirements
-
-custom:
-  pythonRequirements:
-    # This builds dependencies inside a Docker container that matches the
-    # Lambda environment. It's crucial for libraries like pyodbc.
-    dockerizePip: true
-
 provider:
   name: aws
   runtime: python3.9
   region: us-east-1
+  httpApi:
+    cors: true
   iam:
     role:
       statements:
@@ -28,15 +21,7 @@ functions:
       - httpApi:
           path: /api/{proxy+}
           method: any
-          cors: true
 
 package:
-  # Explicitly include only what's needed
-  patterns:
-    - 'app.py'
-    - 'lambda.py'
-    - 'requirements.txt'
-    - '!node_modules/**'
-    - '!.serverless/**'
-    - '!.git/**'
-    - '!.venv/**'
+  # This tells Serverless to use a zip file we will create, instead of building its own.
+  artifact: artifact.zip

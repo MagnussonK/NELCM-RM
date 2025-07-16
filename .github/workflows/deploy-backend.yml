@@ -17,16 +17,26 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
+      - name: Install Python dependencies into a directory
+        run: pip install -r requirements.txt -t ./package
+
+      - name: Manually create deployment package
+        run: |
+          cp app.py ./package/
+          cp lambda.py ./package/
+          cd package
+          zip -r ../artifact.zip .
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -34,12 +44,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Install Serverless CLI and Python Plugin
-        run: |
-          npm install -g serverless@^3
-          serverless plugin install -n serverless-python-requirements
+      - name: Install Serverless CLI
+        run: npm install -g serverless@^3
 
       - name: Deploy with Serverless Framework
-        # The 'serverless-python-requirements' plugin automatically handles
-        # installing your requirements.txt dependencies during this step.
         run: serverless deploy
