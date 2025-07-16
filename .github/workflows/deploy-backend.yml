@@ -1,4 +1,4 @@
-name: Deploy Backend via Serverless Framework
+name: Deploy Backend to AWS Lambda via Container
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - '**.py'
       - 'requirements.txt'
       - 'serverless.yml'
+      - 'Dockerfile'
       - '.github/workflows/deploy-backend.yml'
 
 jobs:
@@ -18,45 +19,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
-      - name: Install MS ODBC Driver for SQL Server
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl gnupg libltdl7
-          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
-          sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
-
-      - name: Install Python dependencies and list contents
-        run: |
-          pip install -r requirements.txt -t ./package
-          echo "--- Listing contents of './package' directory: ---"
-          ls -lR ./package
-
-      - name: Manually create and list deployment package
-        run: |
-          cp app.py ./package/
-          cp lambda.py ./package/
-          mkdir -p ./package/lib
-          cp /usr/lib64/libmsodbcsql-18.so ./package/lib/
-          cp /usr/lib/x86_64-linux-gnu/libodbc.so.2 ./package/lib/
-          cp /usr/lib/x86_64-linux-gnu/libodbcinst.so.2 ./package/lib/
-          cp /usr/lib/x86_64-linux-gnu/libltdl.so.7 ./package/lib/
-          cd package
-          zip -r ../artifact.zip .
-          echo "--- Listing contents of 'artifact.zip': ---"
-          unzip -l ../artifact.zip
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -64,8 +26,26 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Log in to Amazon ECR
+        id: login-ecr # Give the step an ID to reference its output
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
       - name: Install Serverless CLI
         run: npm install -g serverless@^3
 
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: nelcm-record-manager
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
       - name: Deploy with Serverless Framework
-        run: serverless deploy
+        run: serverless deploy --stage dev

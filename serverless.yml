@@ -6,11 +6,12 @@ provider:
   region: us-east-1
   httpApi:
     cors: true
-  
-  # This tells Lambda where to find the driver files at runtime
   environment:
     LD_LIBRARY_PATH: /var/task/lib
-
+  ecr:
+    images:
+      appimage:
+        path: ./
   iam:
     role:
       statements:
@@ -21,7 +22,8 @@ provider:
 
 functions:
   api:
-    handler: lambda.handler
+    image:
+      name: appimage
     events:
       - httpApi:
           path: /api/{proxy+}
