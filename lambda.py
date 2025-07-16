@@ -1,7 +1,7 @@
-# lambda.py trigger
-import serverless_wsgi
-from app import app # Imports your Flask app instance
+# lambda.py
+from serverless_wsgi import handle
+from app import app
 
 def handler(event, context):
-    """This is the handler that the Serverless Framework will deploy."""
-    return serverless_wsgi(app, event, context)
+    # We call the 'handle' function that was imported from the module
+    return handle(app, event, context)
