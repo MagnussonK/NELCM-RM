@@ -5,18 +5,23 @@
     "serviceConfigFileName": "serverless.yml",
     "service": {
       "service": "nelcm-record-manager-api",
-      "plugins": [
-        "serverless-python-requirements"
-      ],
-      "custom": {
-        "pythonRequirements": {
-          "dockerizePip": true
-        }
-      },
       "provider": {
         "name": "aws",
         "runtime": "python3.9",
         "region": "us-east-1",
+        "httpApi": {
+          "cors": true
+        },
+        "environment": {
+          "LD_LIBRARY_PATH": "/var/task/lib"
+        },
+        "ecr": {
+          "images": {
+            "appimage": {
+              "path": "./"
+            }
+          }
+        },
         "iam": {
           "role": {
             "statements": [
@@ -29,38 +34,44 @@
               }
             ]
           }
-        }
+        },
+        "stage": "dev",
+        "versionFunctions": true
       },
       "functions": {
         "api": {
-          "handler": "lambda.handler",
+          "image": {
+            "name": "appimage"
+          },
           "events": [
             {
               "httpApi": {
                 "path": "/api/{proxy+}",
-                "method": "any",
-                "cors": true
+                "method": "any"
               }
             }
-          ]
+          ],
+          "name": "nelcm-record-manager-api-dev-api"
         }
-      },
-      "package": {
-        "patterns": [
-          "app.py",
-          "lambda.py",
-          "requirements.txt",
-          "!node_modules/**",
-          "!.serverless/**",
-          "!.git/**",
-          "!.venv/**"
-        ]
       }
     },
     "provider": {
       "name": "aws",
       "runtime": "python3.9",
       "region": "us-east-1",
+      "httpApi": {
+        "cors": true
+      },
+      "environment": {
+        "LD_LIBRARY_PATH": "/var/task/lib"
+      },
+      "ecr": {
+        "images": {
+          "appimage": {
+            "path": "./"
+          }
+        }
+      },
       "iam": {
         "role": {
           "statements": [
@@ -73,24 +84,40 @@
             }
           ]
         }
-      }
+      },
+      "stage": "dev",
+      "versionFunctions": true
     },
-    "serviceRawFile": "service: nelcm-record-manager-api\r\n\r\nplugins:\r\n  - serverless-python-requirements\r\n\r\ncustom:\r\n  pythonRequirements:\r\n    # This builds dependencies inside a Docker container that matches the\r\n    # Lambda environment. It's crucial for libraries like pyodbc.\r\n    dockerizePip: true\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.9\r\n  region: us-east-1\r\n  iam:\r\n    role:\r\n      statements:\r\n        - Effect: \"Allow\"\r\n          Action:\r\n            - \"secretsmanager:GetSecretValue\"\r\n          Resource: \"arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*\"\r\n\r\nfunctions:\r\n  api:\r\n    handler: lambda.handler\r\n    events:\r\n      - httpApi:\r\n          path: /api/{proxy+}\r\n          method: any\r\n          cors: true\r\n\r\npackage:\r\n  # Explicitly include only what's needed\r\n  patterns:\r\n    - 'app.py'\r\n    - 'lambda.py'\r\n    - 'requirements.txt'\r\n    - '!node_modules/**'\r\n    - '!.serverless/**'\r\n    - '!.git/**'\r\n    - '!.venv/**'",
+    "dashboard": {
+      "isEnabledForService": false,
+      "requiredAuthentication": false,
+      "orgFeaturesInUse": null,
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": null,
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "serviceRawFile": "service: nelcm-record-manager-api\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.9\r\n  region: us-east-1\r\n  httpApi:\r\n    cors: true\r\n  environment:\r\n    LD_LIBRARY_PATH: /var/task/lib\r\n  ecr:\r\n    images:\r\n      appimage:\r\n        path: ./\r\n  iam:\r\n    role:\r\n      statements:\r\n        - Effect: \"Allow\"\r\n          Action:\r\n            - \"secretsmanager:GetSecretValue\"\r\n          Resource: \"arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*\"\r\n\r\nfunctions:\r\n  api:\r\n    image:\r\n      name: appimage\r\n    events:\r\n      - httpApi:\r\n          path: /api/{proxy+}\r\n          method: any",
     "command": [
-      "plugin",
-      "install"
+      "remove"
     ],
     "options": {
-      "n": "serverless-python-requirements"
+      "stage": "dev"
     },
+    "orgId": "84493e23-7fa3-4fbd-a3b4-1857b806f9fa",
+    "orgName": "kedainsights",
+    "userId": "CmHcmYNBSsw3rWrdz3",
+    "userName": "kedainsights",
+    "serviceProviderAwsAccountId": "101067743115",
+    "serviceProviderAwsCfStackName": "nelcm-record-manager-api-dev",
     "serviceProviderAwsCfStackId": "arn:aws:cloudformation:us-east-1:101067743115:stack/nelcm-record-manager-api-dev/d5bc64a0-6273-11f0-9b08-0e7e312e04ab",
     "serviceProviderAwsCfStackCreated": "2025-07-16T18:36:49.641Z",
-    "serviceProviderAwsCfStackUpdated": "2025-07-16T18:46:50.147Z",
-    "serviceProviderAwsCfStackStatus": "UPDATE_COMPLETE",
+    "serviceProviderAwsCfStackUpdated": "2025-07-16T20:57:26.284Z",
+    "serviceProviderAwsCfStackStatus": "UPDATE_ROLLBACK_COMPLETE",
     "serviceProviderAwsCfStackOutputs": [
       {
         "OutputKey": "ApiLambdaFunctionQualifiedArn",
-        "OutputValue": "arn:aws:lambda:us-east-1:101067743115:function:nelcm-record-manager-api-dev-api:2",
+        "OutputValue": "arn:aws:lambda:us-east-1:101067743115:function:nelcm-record-manager-api-dev-api:8",
         "Description": "Current Lambda function version",
         "ExportName": "sls-nelcm-record-manager-api-dev-ApiLambdaFunctionQualifiedArn"
       },
@@ -102,7 +129,7 @@
       },
       {
         "OutputKey": "ServerlessDeploymentBucketName",
-        "OutputValue": "serverless-framework-deployments-us-east-1-173d1e7a-4a2e",
+        "OutputValue": "nelcm-record-manager-api--serverlessdeploymentbuck-1vredczzxpj7",
         "ExportName": "sls-nelcm-record-manager-api-dev-ServerlessDeploymentBucketName"
       },
       {
