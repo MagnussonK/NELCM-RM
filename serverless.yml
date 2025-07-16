@@ -26,6 +26,3 @@ functions:
       - httpApi:
           path: /api/{proxy+}
           method: any
-
-package:
-  artifact: artifact.zip
