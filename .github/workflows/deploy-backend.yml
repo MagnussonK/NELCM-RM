@@ -10,6 +10,7 @@ on:
       - 'serverless.yml'
       - 'Dockerfile'
       - '.github/workflows/deploy-backend.yml'
+      - 'odbcinst.ini'
 
 jobs:
   deploy-backend:
