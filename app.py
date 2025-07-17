@@ -54,8 +54,6 @@ DATABASE_UID = 'nelcm'
 # Name of the secret in AWS Secrets Manager
 SECRET_NAME = "nelcm-db" # Change to your secret's name or ARN
 REGION_NAME = "us-east-1"
-# Remove the hardcoded password
-# DATABASE_PWD = 'SkagmDOc9gUuhSU0!'
 
 def get_db_connection():
     """Establishes a connection to the SQL Server database."""

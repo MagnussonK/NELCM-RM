@@ -1,47 +1,40 @@
 # Dockerfile
 
-# Stage 1: The Builder
-# This stage installs all dependencies in an environment that matches Lambda
+# Stage 1: The Builder - Installs all dependencies and discovers sub-dependencies
 FROM public.ecr.aws/lambda/python:3.9 AS builder
 
-# Install Microsoft ODBC Driver 18 and unixODBC for Amazon Linux 2
+# Install the Microsoft ODBC Driver and unixODBC
 RUN yum update -y && \
     curl https://packages.microsoft.com/config/rhel/7/prod.repo | tee /etc/yum.repos.d/mssql-release.repo && \
-    ACCEPT_EULA=Y yum install -y msodbcsql18 && \
-    yum install -y unixODBC-devel
+    ACCEPT_EULA=Y yum install -y msodbcsql18 unixODBC-devel
 
-# VERIFICATION STEP: Check for files and fail if not found.
-RUN echo "Verifying driver installations..." && \
-    find /opt/microsoft -name "libmsodbcsql-18.so" && \
-    find /usr/lib64 -name "libodbc.so.2"
-
-# Install Python requirements
+# Install Python requirements into a target directory
 COPY requirements.txt .
 RUN pip install -r requirements.txt -t /asset
 
-# Stage 2: The Final Image
-# This stage creates the clean, final image for Lambda
-FROM public.ecr.aws/lambda/python:3.9
+# Create a dedicated directory for all system libraries
+RUN mkdir /lib_dist
+# Copy the main driver into it
+RUN cp /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so.0.1 /lib_dist
+# Use 'ldd' to find all of the driver's dependencies and copy them into the same directory
+RUN ldd /lib_dist/libmsodbcsql-18.so.0.1 | awk 'NF == 4 {print $3};' | xargs -I '{}' cp -L '{}' /lib_dist
 
-# Create a 'lib' directory in our final image for the drivers
-RUN mkdir -p /var/task/lib
 
-# Copy all necessary system libraries from the builder stage into the 'lib' directory
-# Note: The exact name includes version numbers, so we use a wildcard *.
-COPY --from=builder /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so* /var/task/lib/
-COPY --from=builder /usr/lib64/libodbc.so.* /var/task/lib/
-COPY --from=builder /usr/lib64/libodbcinst.so.* /var/task/lib/
-COPY --from=builder /usr/lib64/libltdl.so.* /var/task/lib/
+# Stage 2: The Final Image - Assembles the lean, final image for Lambda
+FROM public.ecr.aws/lambda/python:3._9
+
+# Copy all system libraries (the driver and all its dependencies) from the builder stage
+COPY --from=builder /lib_dist /var/task/lib/
 
 # Copy the installed Python packages from the builder stage
 COPY --from=builder /asset /var/task/
 
-# Copy your application code
-COPY app.py lambda.py ./
-COPY odbcinst.ini .
+# Copy your application code and config file
+COPY app.py lambda.py odbcinst.ini ./
 
-# Set the environment variable to tell the Lambda runtime where to find our custom libraries
+# Set environment variables to tell the system where to find our custom libraries and config
 ENV LD_LIBRARY_PATH=/var/task/lib
+ENV ODBCSYSINI=/var/task
 
 # Set the command to run your handler
 CMD [ "lambda.handler" ]
