@@ -38,6 +38,7 @@ COPY --from=builder /asset /var/task/
 
 # Copy your application code
 COPY app.py lambda.py ./
+COPY odbcinst.ini .
 
 # Set the environment variable to tell the Lambda runtime where to find our custom libraries
 ENV LD_LIBRARY_PATH=/var/task/lib

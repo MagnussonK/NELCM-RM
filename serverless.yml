@@ -27,6 +27,9 @@ provider:
     subnetIds:
       - subnet-0c28480ffa2575501 # Replace with your first Subnet ID
       - subnet-06b38eab5381ea78f # Replace with your second Subnet ID
+  environment:
+   LD_LIBRARY_PATH: /var/task/lib
+   ODBCSYSINI: /var/task
 
 functions:
   api:
