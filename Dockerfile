@@ -1,43 +1,25 @@
 # Dockerfile
 
-# Stage 1: The Builder
-FROM public.ecr.aws/lambda/python:3.9 AS builder
-
-# Install the Microsoft ODBC Driver and unixODBC
-RUN yum update -y && \
-    curl https://packages.microsoft.com/config/rhel/7/prod.repo | tee /etc/yum.repos.d/mssql-release.repo && \
-    ACCEPT_EULA=Y yum install -y msodbcsql18 unixODBC-devel
-
-# Install Python requirements
-COPY requirements.txt .
-RUN pip install -r requirements.txt -t /asset
-
-# Create a libs folder and dynamically find/copy all dependencies
-RUN set -x && \
-    mkdir /lib_dist && \
-    MSODBC_PATH=$(find /opt/microsoft -name "libmsodbcsql-18.so.*") && \
-    echo "Found MSODBC driver at: $MSODBC_PATH" && \
-    cp $MSODBC_PATH /lib_dist/ && \
-    echo "--- Running ldd to find dependencies ---" && \
-    ldd $MSODBC_PATH && \
-    echo "--- Copying dependencies ---" && \
-    DEPS=$(ldd $MSODBC_PATH | awk 'NF == 4 {print $3};') && \
-    echo "Dependencies found: $DEPS" && \
-    if [ -n "$DEPS" ]; then cp -L $DEPS /lib_dist/; else echo "No dynamic dependencies found to copy."; fi
-
-# Stage 2: The Final Image
+# Start from the official AWS Lambda base image for Python 3.9
 FROM public.ecr.aws/lambda/python:3.9
 
-# Copy the consolidated libraries from the builder stage
-COPY --from=builder /lib_dist/ /var/task/lib/
+# Set the working directory for the Lambda function
+WORKDIR /var/task
 
-# Copy the installed Python packages from the builder stage
-COPY --from=builder /asset/ /var/task/
+# Create a 'lib' directory in our image for the custom drivers
+RUN mkdir -p /var/task/lib
 
-# Copy your application code and config file
+# Copy our pre-downloaded driver files from the local 'drivers' folder into the image's 'lib' directory
+COPY drivers/* /var/task/lib/
+
+# Copy and install Python requirements
+COPY requirements.txt .
+RUN pip install -r requirements.txt -t .
+
+# Copy your application code and ODBC configuration file
 COPY app.py lambda.py odbcinst.ini ./
 
-# Set environment variables
+# Set environment variables to point to our packaged libraries and config
 ENV LD_LIBRARY_PATH=/var/task/lib
 ENV ODBCSYSINI=/var/task
 
