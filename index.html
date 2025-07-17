@@ -1281,7 +1281,7 @@
             showLoadingIndicator();
             try {
                 // Use the new API endpoint to get today's visits
-                const response = await fetch(`${BASE_API_URL}/api/visits/today`);
+                const response = await fetch(`${BASE_API_URL}/visits/today`);
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
