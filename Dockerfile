@@ -6,7 +6,7 @@ FROM ubuntu:22.04 AS builder
 # Set frontend to noninteractive to avoid prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Add the deadsnakes PPA to get Python 3.9 and install it
+# Install Python 3.9 from the deadsnakes PPA
 RUN apt-get update && \
     apt-get install -y software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa && \
@@ -25,17 +25,15 @@ RUN ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt -t /asset
 
-# Create a libs folder and dynamically find/copy all dependencies
-RUN mkdir /lib_dist && \
-    MSODBC_PATH=$(find /opt/microsoft -name "libmsodbcsql-18.so.*") && \
-    cp $MSODBC_PATH /lib_dist/ && \
-    ldd $MSODBC_PATH | awk 'NF == 4 {print $3};' | xargs -I '{}' cp -L '{}' /lib_dist/
 
 # Stage 2: The Final Image
 FROM public.ecr.aws/lambda/python:3.9
 
-# Copy all system libraries from the builder stage
-COPY --from=builder /lib_dist/ /var/task/lib/
+# Copy the required system libraries directly from the standard paths in the builder stage
+COPY --from=builder /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so.* /var/task/lib/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libodbc.so.* /var/task/lib/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libodbcinst.so.* /var/task/lib/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libltdl.so.* /var/task/lib/
 
 # Copy the installed Python packages from the builder stage
 COPY --from=builder /asset/ /var/task/
@@ -43,6 +41,6 @@ COPY --from=builder /asset/ /var/task/
 # Copy your application code and config file
 COPY app.py lambda.py odbcinst.ini ./
 
-# Set environment variables
+# Set environment variables to point to our packaged libraries and config
 ENV LD_LIBRARY_PATH=/var/task/lib
 ENV ODBCSYSINI=/var/task
