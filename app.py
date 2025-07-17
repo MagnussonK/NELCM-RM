@@ -313,7 +313,16 @@ def update_record(member_id):
         params = member_params
         params.append(member_id)
         
-        if not is_primary and original_name and original_last_name:
+#        if not is_primary and original_name and original_last_name:
+#            where_clause += " AND name = ? AND last_name = ?"
+#            params.append(original_name)
+#            params.append(original_last_name)
+
+        if is_primary:
+            # If updating a primary member, target them specifically.
+            where_clause += " AND primary_member = 1"
+        elif original_name and original_last_name:
+            # This part correctly handles updating secondary members.
             where_clause += " AND name = ? AND last_name = ?"
             params.append(original_name)
             params.append(original_last_name)
