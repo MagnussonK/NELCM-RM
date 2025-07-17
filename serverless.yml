@@ -33,8 +33,7 @@ functions:
   api:
     image:
       name: appimage
-      command:
-        - lambda.handler # Add this command
+
     events:
       - httpApi:
           path: /api/{proxy+}

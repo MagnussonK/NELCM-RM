@@ -17,7 +17,7 @@ RUN pip install -r requirements.txt -t .
 
 # Copy necessary libraries from the system paths into a local 'lib' directory
 RUN mkdir lib && \
-    cp /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so.* ./lib/ && \
+    cp /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18*.* ./lib/ && \
     cp /usr/lib64/libodbc.so.* ./lib/ && \
     cp /usr/lib64/libodbcinst.so.* ./lib/ && \
     cp /usr/lib64/libltdl.so.* ./lib/
@@ -28,3 +28,6 @@ COPY app.py lambda.py odbcinst.ini ./
 # Set environment variables to use our packaged libraries and config
 ENV LD_LIBRARY_PATH=./lib
 ENV ODBCSYSINI=.
+
+# Set the command to run your handler
+CMD [ "lambda.handler" ]
