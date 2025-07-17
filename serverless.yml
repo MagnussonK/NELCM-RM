@@ -30,6 +30,7 @@ functions:
   api:
     image:
       name: appimage
+    timeout: 30
     events:
       - httpApi:
           path: /api/{proxy+}
