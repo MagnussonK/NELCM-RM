@@ -33,8 +33,7 @@ functions:
   api:
     image:
       name: appimage
-    timeout: 5
-    command:
+      command:
         - lambda.handler # Add this command
     events:
       - httpApi:
