@@ -1427,13 +1427,22 @@
                              displayValue = formatDate(date);
                         }
                     } else if (value !== null && value !== undefined && String(value).trim() !== '') {
-                        if (header === 'active_flag') {
-                            if(row.founding_family === true) {
-                                displayValue = 'Active';
-                            } else {
-                                displayValue = value === true ? 'Active' : 'Inactive';
-                            }
+                        
+						if (header === 'active_flag') {
+                           if (row.founding_family === true) {
+                               displayValue = 'Active';
+                           } else {
+                              const expirationDate = parseDateRobustly(row.membership_expires);
+                              // If an expiration date exists and it has not yet passed, show 'Active'.
+                              if (expirationDate && expirationDate >= today) {
+                                  displayValue = 'Active';
+                              } else {
+                                  // Otherwise, rely on the flag from the database for truly expired accounts.
+                                  displayValue = row.active_flag === true ? 'Active' : 'Inactive';
+                              }
+                           }
                         }
+						
                         else {
                             displayValue = String(value).trim();
                             if (displayValue === '') displayValue = 'N/A';
