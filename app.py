@@ -34,6 +34,7 @@ def get_database_password():
         raise e
 
     secret = get_secret_value_response['SecretString']
+    return secret
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
