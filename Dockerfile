@@ -21,7 +21,7 @@ RUN ldd /lib_dist/libmsodbcsql-18.so.0.1 | awk 'NF == 4 {print $3};' | xargs -I 
 
 
 # Stage 2: The Final Image - Assembles the lean, final image for Lambda
-FROM public.ecr.aws/lambda/python:3._9
+FROM public.ecr.aws/lambda/python:3.9
 
 # Copy all system libraries (the driver and all its dependencies) from the builder stage
 COPY --from=builder /lib_dist /var/task/lib/
