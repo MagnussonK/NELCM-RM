@@ -14,11 +14,9 @@ from botocore.exceptions import ClientError
 
 
 def get_database_password():
-
     secret_name = "nelcm-db"
     region_name = "us-east-1"
 
-    # Create a Secrets Manager client
     session = boto3.session.Session()
     client = session.client(
         service_name='secretsmanager',
@@ -30,12 +28,13 @@ def get_database_password():
             SecretId=secret_name
         )
     except ClientError as e:
-        # For a list of exceptions thrown, see
-        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
         raise e
 
-    secret = get_secret_value_response['SecretString']
-    return secret
+    secret_string = get_secret_value_response['SecretString']
+
+    # Parse the JSON string and return only the password
+    secret_data = json.loads(secret_string)
+    return secret_data['password']
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
