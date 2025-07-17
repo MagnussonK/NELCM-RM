@@ -532,5 +532,43 @@ def get_member_visits(member_id, name, last_name):
         if conn:
             conn.close()
 
+@app.route('/api/visits/today', methods=['GET'])
+def get_today_visits():
+    """Fetches a list of all member visits for today."""
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    cursor = conn.cursor()
+    try:
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        tomorrow_start = today_start + timedelta(days=1)
+
+        sql_query = """
+            SELECT name, last_name, visit_datetime
+            FROM Visits
+            WHERE visit_datetime >= ? AND visit_datetime < ?
+            ORDER BY visit_datetime DESC
+        """
+        cursor.execute(sql_query, today_start, tomorrow_start)
+        
+        columns = [column[0] for column in cursor.description]
+        visits = []
+        for row in cursor.fetchall():
+            visit_dict = dict(zip(columns, row))
+            # Ensure datetime is converted to a string for JSON
+            visit_dict['visit_datetime'] = visit_dict['visit_datetime'].isoformat()
+            visits.append(visit_dict)
+        
+        return jsonify(visits), 200
+    except pyodbc.Error as ex:
+        logging.error(f"Failed to fetch today's visits list: {ex}")
+        return jsonify({"error": "Could not retrieve today's visits list"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', port = 5000, debug=True)
