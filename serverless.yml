@@ -34,6 +34,8 @@ functions:
     image:
       name: appimage
     timeout: 5
+    command:
+        - lambda.handler # Add this command
     events:
       - httpApi:
           path: /api/{proxy+}

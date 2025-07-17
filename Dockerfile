@@ -22,6 +22,3 @@ COPY app.py lambda.py odbcinst.ini ./
 # Set environment variables to point to our packaged libraries and config
 ENV LD_LIBRARY_PATH=/var/task/lib
 ENV ODBCSYSINI=/var/task
-
-# Set the command to run your handler
-CMD [ "lambda.handler" ]
