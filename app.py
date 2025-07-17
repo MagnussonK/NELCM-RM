@@ -48,7 +48,7 @@ CORS(app)
 # --- Database Configuration ---
 SQL_SERVER_INSTANCE = 'nelcm.cy1ogm8uwbvo.us-east-1.rds.amazonaws.com,1433'
 DATABASE_NAME = 'nela-cm'
-ODBC_DRIVER = '{ODBC Driver 17 for SQL Server}'
+ODBC_DRIVER = '{ODBC Driver 18 for SQL Server}'
 DATABASE_UID = 'nelcm'
 
 # Name of the secret in AWS Secrets Manager
