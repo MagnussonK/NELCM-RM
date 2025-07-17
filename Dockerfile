@@ -13,10 +13,17 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt -t /asset
 
 # Create a libs folder and dynamically find/copy all dependencies
-RUN mkdir /lib_dist && \
+RUN set -x && \
+    mkdir /lib_dist && \
     MSODBC_PATH=$(find /opt/microsoft -name "libmsodbcsql-18.so.*") && \
+    echo "Found MSODBC driver at: $MSODBC_PATH" && \
     cp $MSODBC_PATH /lib_dist/ && \
-    ldd $MSODBC_PATH | awk 'NF == 4 {print $3};' | xargs -I '{}' cp -L '{}' /lib_dist/
+    echo "--- Running ldd to find dependencies ---" && \
+    ldd $MSODBC_PATH && \
+    echo "--- Copying dependencies ---" && \
+    DEPS=$(ldd $MSODBC_PATH | awk 'NF == 4 {print $3};') && \
+    echo "Dependencies found: $DEPS" && \
+    if [ -n "$DEPS" ]; then cp -L $DEPS /lib_dist/; else echo "No dynamic dependencies found to copy."; fi
 
 # Stage 2: The Final Image
 FROM public.ecr.aws/lambda/python:3.9
