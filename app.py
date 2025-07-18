@@ -630,41 +630,6 @@ def send_renewal_email_ses(recipient_email, member_name, expiration_date):
         logging.info(f"Email sent successfully to {recipient_email}! Message ID: {response['MessageId']}")
         return True
 
-@app.route('/api/data', methods=['GET'])
-def get_data():
-    """
-    Fetches all data by joining members and family tables.
-    """
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "Database connection failed"}), 500
-
-    cursor = conn.cursor()
-    try:
-        # Use LEFT JOIN to get all members and their corresponding family info
-        cursor.execute("SELECT * FROM members LEFT JOIN family ON members.member_id = family.member_id")
-        # Handling potential duplicate column names (like member_id)
-        columns = [column[0] for column in cursor.description]
-        rows = []
-        for row in cursor.fetchall():
-            row_dict = {}
-            for i, col in enumerate(columns):
-                # If a column name is already in the dict, it's likely a duplicate from the join.
-                # We can decide which one to keep, here we just overwrite, which is usually fine
-                # if the joined keys are identical.
-                row_dict[col] = row[i]
-            rows.append(row_dict)
-        return jsonify(rows)
-    except pyodbc.Error as ex:
-        sqlstate = ex.args[0]
-        logging.error(f"Error fetching data: {sqlstate} - {ex}")
-        return jsonify({"error": f"Database error: {ex}"}), 500
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-
 # --- MODIFIED: Endpoint now uses the SES function ---
 @app.route('/api/send_renewal_emails', methods=['POST'])
 def send_renewal_emails():
