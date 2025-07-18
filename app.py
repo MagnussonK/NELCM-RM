@@ -577,7 +577,7 @@ def send_renewal_email_ses(recipient_email, member_name, expiration_date):
     Returns True if successful, False otherwise.
     """
     # This address MUST be verified in AWS SES.
-    SENDER = "The Childrens Museum <donotreply@yourdomain.com>"
+    SENDER = "The Childrens Museum <nelcm98@gmail.com>"
     
     # The AWS region for SES.
     AWS_REGION = "us-east-1"
