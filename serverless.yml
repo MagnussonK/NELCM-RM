@@ -20,16 +20,17 @@ provider:
           Action:
             - "secretsmanager:GetSecretValue"
           Resource: "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
-        # --- NEW: Add this statement for SES ---
         - Effect: "Allow"
           Action:
             - "ses:SendEmail"
             - "ses:SendRawEmail"
-          Resource: "*" # For best security, restrict this to your specific SES Identity ARN  vpc:
+          Resource: "*"
+  
+  # CORRECTED PLACEMENT: vpc is a direct child of provider
+  vpc:
     securityGroupIds:
       - sg-0538cfedbe5d23eb5 # Replace with your Security Group ID
       - sg-087d696b0a5c38093
-      
     subnetIds:
       - subnet-0c28480ffa2575501 # Replace with your first Subnet ID
       - subnet-06b38eab5381ea78f # Replace with your second Subnet ID
@@ -38,10 +39,7 @@ functions:
   api:
     image:
       name: appimage
-
     events:
       - httpApi:
           path: /api/{proxy+}
           method: any
-          
-          
