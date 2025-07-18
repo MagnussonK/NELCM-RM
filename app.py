@@ -569,6 +569,83 @@ def get_today_visits():
             cursor.close()
         if conn:
             conn.close()
+            
+# --- NEW: Endpoint to send renewal emails ---
+@app.route('/api/send_renewal_emails', methods=['POST'])
+def send_renewal_emails():
+    """
+    Scans for members whose membership expires in the current month and sends a renewal email.
+    This is intended to be run on the 1st of each month.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    cursor = conn.cursor()
+    try:
+        today = date.today()
+        
+        # In a real-world cron job, you might want this check. For manual triggering, it's commented out.
+        # if today.day != 1:
+        #     return jsonify({"message": "Not the first day of the month. No action taken."}), 200
+
+        # Find members whose membership expires this month and who haven't been sent an email yet for this cycle.
+        query = """
+            SELECT f.member_id, f.email, m.name, m.last_name, f.membership_expires
+            FROM family as f
+            LEFT JOIN members as m ON f.member_id = m.member_id AND m.primary_member = 1
+            WHERE 
+                f.founding_family = 0
+                AND f.active_flag = 1
+                AND MONTH(f.membership_expires) = ?
+                AND YEAR(f.membership_expires) = ?
+                AND f.renewal_email_sent_date IS NULL
+        """
+        cursor.execute(query, today.month, today.year)
+        expiring_members = cursor.fetchall()
+
+        if not expiring_members:
+            logging.info("No members found requiring a renewal email this month.")
+            return jsonify({"message": "No members found requiring a renewal email."}), 200
+
+        sent_count = 0
+        for member in expiring_members:
+            member_id, email, name, last_name, expires = member
+            if not email:
+                logging.warning(f"Cannot send renewal email to {name} {last_name} (ID: {member_id}): No email on record.")
+                continue
+            
+            # --- Simulate Email Sending ---
+            # In a real application, you would integrate a service like AWS SES here.
+            logging.info(f"SIMULATING RENEWAL EMAIL to: {email} for member {name} {last_name} (ID: {member_id}). Membership expires on {expires.strftime('%Y-%m-%d')}.")
+            # -----------------------------
+
+            # Update the database to mark the email as sent
+            update_query = "UPDATE family SET renewal_email_sent_date = ? WHERE member_id = ?"
+            cursor.execute(update_query, today, member_id)
+            sent_count += 1
+        
+        conn.commit()
+        
+        message = f"Process complete. Successfully sent {sent_count} renewal emails."
+        logging.info(message)
+        return jsonify({"message": message, "sent_count": sent_count}), 200
+
+    except pyodbc.Error as ex:
+        conn.rollback()
+        sqlstate = ex.args[0]
+        # Check for 'Invalid column name' error (207 in SQL Server)
+        if '207' in sqlstate: 
+             logging.error(f"Database error in send_renewal_emails: {ex}. It seems the 'renewal_email_sent_date' column is missing from the 'family' table.")
+             return jsonify({"error": "Database schema error: 'renewal_email_sent_date' column not found in 'family' table. Please run the required ALTER TABLE script."}), 500
+        logging.error(f"Database error sending renewal emails: {sqlstate} - {ex}")
+        return jsonify({"error": f"Database error: {ex}"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', port = 5000, debug=True)
