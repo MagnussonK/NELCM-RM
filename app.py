@@ -735,21 +735,5 @@ def send_renewal_emails():
         if conn:
             conn.close()
 
-    except pyodbc.Error as ex:
-        conn.rollback()
-        sqlstate = ex.args[0]
-        # Check for 'Invalid column name' error (207 in SQL Server)
-        if '207' in sqlstate: 
-             logging.error(f"Database error in send_renewal_emails: {ex}. It seems the 'renewal_email_sent_date' column is missing from the 'family' table.")
-             return jsonify({"error": "Database schema error: 'renewal_email_sent_date' column not found in 'family' table. Please run the required ALTER TABLE script."}), 500
-        logging.error(f"Database error sending renewal emails: {sqlstate} - {ex}")
-        return jsonify({"error": f"Database error: {ex}"}), 500
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-
-
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', port = 5000, debug=True)
