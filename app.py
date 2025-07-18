@@ -570,11 +570,106 @@ def get_today_visits():
         if conn:
             conn.close()
             
-# --- NEW: Endpoint to send renewal emails ---
+# --- NEW: Function to send email via AWS SES ---
+def send_renewal_email_ses(recipient_email, member_name, expiration_date):
+    """
+    Sends a formatted renewal email using AWS SES.
+    Returns True if successful, False otherwise.
+    """
+    # This address MUST be verified in AWS SES.
+    SENDER = "The Childrens Museum <donotreply@yourdomain.com>"
+    
+    # The AWS region for SES.
+    AWS_REGION = "us-east-1"
+    
+    # The email subject.
+    SUBJECT = "Your Children's Museum Membership Is Expiring Soon!"
+
+    # The email body for members.
+    BODY_HTML = f"""
+    <html>
+    <head></head>
+    <body style="font-family: Arial, sans-serif; color: #333;">
+      <h2>Time to Renew Your Membership!</h2>
+      <p>Dear {member_name},</p>
+      <p>
+        Thank you for being a valued member of The Children's Museum! We hope you've enjoyed a year of fun, learning, and discovery.
+      </p>
+      <p>
+        This is a friendly reminder that your family's membership is scheduled to expire on 
+        <b>{expiration_date.strftime('%B %d, %Y')}</b>.
+      </p>
+      <p>
+        Renewing is easy! Simply visit our front desk on your next visit to continue your adventure with us for another year.
+      </p>
+      <p>We look forward to seeing you again soon!</p>
+      <br>
+      <p>Sincerely,</p>
+      <p><b>The Children's Museum Team</b></p>
+    </body>
+    </html>
+    """
+
+    # Create a new SES resource and specify a region.
+    ses_client = boto3.client('ses', region_name=AWS_REGION)
+
+    # Try to send the email.
+    try:
+        response = ses_client.send_email(
+            Destination={'ToAddresses': [recipient_email]},
+            Message={
+                'Body': {'Html': {'Charset': "UTF-8", 'Data': BODY_HTML}},
+                'Subject': {'Charset': "UTF-8", 'Data': SUBJECT},
+            },
+            Source=SENDER,
+        )
+    except ClientError as e:
+        logging.error(f"Email failed to send to {recipient_email}: {e.response['Error']['Message']}")
+        return False
+    else:
+        logging.info(f"Email sent successfully to {recipient_email}! Message ID: {response['MessageId']}")
+        return True
+
+@app.route('/api/data', methods=['GET'])
+def get_data():
+    """
+    Fetches all data by joining members and family tables.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    cursor = conn.cursor()
+    try:
+        # Use LEFT JOIN to get all members and their corresponding family info
+        cursor.execute("SELECT * FROM members LEFT JOIN family ON members.member_id = family.member_id")
+        # Handling potential duplicate column names (like member_id)
+        columns = [column[0] for column in cursor.description]
+        rows = []
+        for row in cursor.fetchall():
+            row_dict = {}
+            for i, col in enumerate(columns):
+                # If a column name is already in the dict, it's likely a duplicate from the join.
+                # We can decide which one to keep, here we just overwrite, which is usually fine
+                # if the joined keys are identical.
+                row_dict[col] = row[i]
+            rows.append(row_dict)
+        return jsonify(rows)
+    except pyodbc.Error as ex:
+        sqlstate = ex.args[0]
+        logging.error(f"Error fetching data: {sqlstate} - {ex}")
+        return jsonify({"error": f"Database error: {ex}"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+# --- MODIFIED: Endpoint now uses the SES function ---
 @app.route('/api/send_renewal_emails', methods=['POST'])
 def send_renewal_emails():
     """
-    Scans for members whose membership expires in the current month and sends a renewal email.
+    Scans for members whose membership expires in the current month and sends a renewal email via SES.
     This is intended to be run on the 1st of each month.
     """
     conn = get_db_connection()
@@ -585,10 +680,6 @@ def send_renewal_emails():
     try:
         today = date.today()
         
-        # In a real-world cron job, you might want this check. For manual triggering, it's commented out.
-        # if today.day != 1:
-        #     return jsonify({"message": "Not the first day of the month. No action taken."}), 200
-
         # Find members whose membership expires this month and who haven't been sent an email yet for this cycle.
         query = """
             SELECT f.member_id, f.email, m.name, m.last_name, f.membership_expires
@@ -615,21 +706,34 @@ def send_renewal_emails():
                 logging.warning(f"Cannot send renewal email to {name} {last_name} (ID: {member_id}): No email on record.")
                 continue
             
-            # --- Simulate Email Sending ---
-            # In a real application, you would integrate a service like AWS SES here.
-            logging.info(f"SIMULATING RENEWAL EMAIL to: {email} for member {name} {last_name} (ID: {member_id}). Membership expires on {expires.strftime('%Y-%m-%d')}.")
-            # -----------------------------
-
-            # Update the database to mark the email as sent
-            update_query = "UPDATE family SET renewal_email_sent_date = ? WHERE member_id = ?"
-            cursor.execute(update_query, today, member_id)
-            sent_count += 1
+            # --- MODIFIED: Call the real SES email function ---
+            # The database is only updated if the email sends successfully.
+            if send_renewal_email_ses(recipient_email=email, member_name=f"{name} {last_name}", expiration_date=expires):
+                # Update the database to mark the email as sent
+                update_query = "UPDATE family SET renewal_email_sent_date = ? WHERE member_id = ?"
+                cursor.execute(update_query, today, member_id)
+                sent_count += 1
         
         conn.commit()
         
         message = f"Process complete. Successfully sent {sent_count} renewal emails."
         logging.info(message)
         return jsonify({"message": message, "sent_count": sent_count}), 200
+
+    except pyodbc.Error as ex:
+        conn.rollback()
+        sqlstate = ex.args[0]
+        # Check for 'Invalid column name' error (207 in SQL Server)
+        if '207' in sqlstate: 
+             logging.error(f"Database error in send_renewal_emails: {ex}. It seems the 'renewal_email_sent_date' column is missing from the 'family' table.")
+             return jsonify({"error": "Database schema error: 'renewal_email_sent_date' column not found in 'family' table. Please run the required ALTER TABLE script."}), 500
+        logging.error(f"Database error sending renewal emails: {sqlstate} - {ex}")
+        return jsonify({"error": f"Database error: {ex}"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
     except pyodbc.Error as ex:
         conn.rollback()

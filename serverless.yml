@@ -20,7 +20,12 @@ provider:
           Action:
             - "secretsmanager:GetSecretValue"
           Resource: "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
-  vpc:
+        # --- NEW: Add this statement for SES ---
+        - Effect: "Allow"
+          Action:
+            - "ses:SendEmail"
+            - "ses:SendRawEmail"
+          Resource: "*" # For best security, restrict this to your specific SES Identity ARN  vpc:
     securityGroupIds:
       - sg-0538cfedbe5d23eb5 # Replace with your Security Group ID
       - sg-087d696b0a5c38093
