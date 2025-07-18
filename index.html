@@ -1586,7 +1586,7 @@
             homeDataResultsDiv.innerHTML = tableHtml;
 
             document.querySelectorAll('#homeDataResults tbody tr').forEach(rowElement => {
-                rowElement.addEventListener('dblclick', (event) => {
+                rowElement.addEventListener('click', (event) => {
                     const idFromDataAttribute = rowElement.dataset.id;
                     const record = allData.find(item => getRecordId(item) === idFromDataAttribute && item.primary_member === true);
 
