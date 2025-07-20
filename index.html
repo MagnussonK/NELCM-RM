@@ -1430,7 +1430,7 @@
          * Renders the provided data into the home view table.
          * @param {Array<Object>} dataToRender - The array of data objects to display.
          */
- function renderHomeTable(dataToRender) {
+function renderHomeTable(dataToRender) {
             if (!dataToRender || dataToRender.length === 0) {
                 homeDataResultsDiv.innerHTML = '<p class="text-center text-gray-500 py-4">No data found or no results match your search.</p>';
                 return;
@@ -1521,11 +1521,14 @@
                         let statusIcons = '';
 
                         // --- MODIFIED ICON LOGIC ---
-                        // If email has NOT been sent and it's not a founding family, show "not sent" icon
+                        // If email has NOT been sent and it's not a founding family, show the new SVG icon
                         if (!row.renewal_email_sent && !row.founding_family) {
                             statusIcons += `<span title="Renewal notice has not been sent" class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-800">
-                                                &#128683;
-                                            </span>`; // No Entry icon
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" style="stroke: #7f1d1d;"/>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12" style="stroke: #ef4444;" />
+                                                </svg>
+                                            </span>`;
                         }
 
                         // If the record is missing contact info, show the warning icon
