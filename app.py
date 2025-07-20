@@ -633,35 +633,26 @@ def send_renewal_email_ses(recipient_email, member_name, expiration_date):
 # --- MODIFIED: Endpoint now uses the SES function ---
 @app.route('/api/send_renewal_emails', methods=['POST'])
 def send_renewal_emails():
-    """
-    Scans for members whose membership expires in the current month and sends a renewal email via SES.
-    This is intended to be run on the 1st of each month.
-    """
+    """Scans for members whose membership expires in the current month and sends a renewal email via SES."""
     conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "Database connection failed"}), 500
-
+    if conn is None: return jsonify({"error": "Database connection failed"}), 500
     cursor = conn.cursor()
     try:
         today = date.today()
-        
-        # Find members whose membership expires this month and who haven't been sent an email yet for this cycle.
+        # MODIFIED: Query uses the new renewal_email_sent flag
         query = """
             SELECT f.member_id, f.email, m.name, m.last_name, f.membership_expires
             FROM family as f
             LEFT JOIN members as m ON f.member_id = m.member_id AND m.primary_member = 1
             WHERE 
-                f.founding_family = 0
-                AND f.active_flag = 1
-                AND MONTH(f.membership_expires) = ?
-                AND YEAR(f.membership_expires) = ?
-                AND f.renewal_email_sent_date IS NULL
+                f.founding_family = 0 AND f.active_flag = 1
+                AND MONTH(f.membership_expires) = ? AND YEAR(f.membership_expires) = ?
+                AND f.renewal_email_sent = 0
         """
         cursor.execute(query, today.month, today.year)
         expiring_members = cursor.fetchall()
 
         if not expiring_members:
-            logging.info("No members found requiring a renewal email this month.")
             return jsonify({"message": "No members found requiring a renewal email."}), 200
 
         sent_count = 0
@@ -671,34 +662,22 @@ def send_renewal_emails():
                 logging.warning(f"Cannot send renewal email to {name} {last_name} (ID: {member_id}): No email on record.")
                 continue
             
-            # --- MODIFIED: Call the real SES email function ---
-            # The database is only updated if the email sends successfully.
             if send_renewal_email_ses(recipient_email=email, member_name=f"{name} {last_name}", expiration_date=expires):
-                # Update the database to mark the email as sent
-                update_query = "UPDATE family SET renewal_email_sent_date = ? WHERE member_id = ?"
-                cursor.execute(update_query, today, member_id)
+                # MODIFIED: Update query now sets the flag to 1 (true)
+                update_query = "UPDATE family SET renewal_email_sent = 1 WHERE member_id = ?"
+                cursor.execute(update_query, member_id)
                 sent_count += 1
         
         conn.commit()
-        
         message = f"Process complete. Successfully sent {sent_count} renewal emails."
-        logging.info(message)
         return jsonify({"message": message, "sent_count": sent_count}), 200
-
     except pyodbc.Error as ex:
         conn.rollback()
-        sqlstate = ex.args[0]
-        # Check for 'Invalid column name' error (207 in SQL Server)
-        if '207' in sqlstate: 
-             logging.error(f"Database error in send_renewal_emails: {ex}. It seems the 'renewal_email_sent_date' column is missing from the 'family' table.")
-             return jsonify({"error": "Database schema error: 'renewal_email_sent_date' column not found in 'family' table. Please run the required ALTER TABLE script."}), 500
-        logging.error(f"Database error sending renewal emails: {sqlstate} - {ex}")
+        logging.error(f"Database error sending renewal emails: {ex.args[0]} - {ex}")
         return jsonify({"error": f"Database error: {ex}"}), 500
     finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', port = 5000, debug=True)

@@ -1430,7 +1430,7 @@
          * Renders the provided data into the home view table.
          * @param {Array<Object>} dataToRender - The array of data objects to display.
          */
-        function renderHomeTable(dataToRender) {
+ function renderHomeTable(dataToRender) {
             if (!dataToRender || dataToRender.length === 0) {
                 homeDataResultsDiv.innerHTML = '<p class="text-center text-gray-500 py-4">No data found or no results match your search.</p>';
                 return;
@@ -1520,16 +1520,15 @@
                         cellClass = 'px-2 py-3 text-center flex items-center justify-center gap-2';
                         let statusIcons = '';
 
-                        // --- MODIFIED: Add mail icon if renewal email was sent ---
-                        if (row.renewal_email_sent_date) {
-                            const sentDate = formatDate(parseDateRobustly(row.renewal_email_sent_date));
-                            statusIcons += `<span title="Renewal notice sent on ${sentDate}" class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 text-blue-800">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                </svg>
-                                            </span>`;
+                        // --- MODIFIED ICON LOGIC ---
+                        // If email has NOT been sent and it's not a founding family, show "not sent" icon
+                        if (!row.renewal_email_sent && !row.founding_family) {
+                            statusIcons += `<span title="Renewal notice has not been sent" class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-800">
+                                                &#128683;
+                                            </span>`; // No Entry icon
                         }
 
+                        // If the record is missing contact info, show the warning icon
                         if (hasMissing) {
                             statusIcons += `<span title="Missing important information" class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-yellow-100 text-yellow-800">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1555,11 +1554,9 @@
                                displayValue = 'Active';
                            } else {
                               const expirationDate = parseDateRobustly(row.membership_expires);
-                              // If an expiration date exists and it has not yet passed, show 'Active'.
                               if (expirationDate && expirationDate >= today) {
                                   displayValue = 'Active';
                               } else {
-                                  // Otherwise, rely on the flag from the database for truly expired accounts.
                                   displayValue = row.active_flag === true ? 'Active' : 'Inactive';
                               }
                            }
@@ -1600,7 +1597,6 @@
                 });
             });
         }
-
         /**
          * Filters and sorts the displayed data based on the last name search input
          * and the "show inactive" toggle for the home view.
