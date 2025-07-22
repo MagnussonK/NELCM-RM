@@ -29,11 +29,11 @@ provider:
   # CORRECTED PLACEMENT: vpc is a direct child of provider
   vpc:
     securityGroupIds:
-      - sg-0538cfedbe5d23eb5 # Replace with your Security Group ID
+      - sg-0538cfedbe5d23eb5
       - sg-087d696b0a5c38093
     subnetIds:
-      - subnet-0c28480ffa2575501 # Replace with your first Subnet ID
-      - subnet-06b38eab5381ea78f # Replace with your second Subnet ID
+      - subnet-06ca61fce5f705db2
+      - subnet-01ae22cae3a9c51f5
 
 functions:
   api:
@@ -58,4 +58,4 @@ functions:
       command:
         - ses_handler.handler # Point to the new handler
     events:
-      - sns: nelcm-ses-events
+      - sns: nelcm-ses-events # Subscribe to this SNS topic
