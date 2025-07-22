@@ -2101,7 +2101,7 @@ function renderHomeTable(dataToRender) {
                         updateMembershipContainer.style.display = 'none';
                     } else {
                         familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
-                        editMemStartDate.value = formatDateForInput(memStartDateObj);
+                        editMemStartDate.value = formatDateForInput(new Date());
                         updateMembershipContainer.style.display = 'block'; // Use 'block' or 'flex'
                     }
 
