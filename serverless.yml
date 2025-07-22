@@ -47,6 +47,7 @@ functions:
   renewalEmailTrigger:
     image:
       name: appimage # Reuse the same ECR image
-    handler: renewal_trigger.handler # Point to the new handler file and function
+      command:
+        - renewal_trigger.handler # Correctly override the Docker CMD for this function
     events:
       - schedule: cron(0 12 1 * ? *) # Runs at 12:00 PM UTC on the 1st day of every month
