@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Childrens Museum - Unified Record Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="/logo.png" type="image/png"> </head>
+    <style>
+        /* All CSS styles are correct and remain here */
+        /* Global Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light background color */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top */
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+        .main-container {
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1), 0 4px 8px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 6xl; /* Increased max-width for overall app */
+            border: 1px solid #e2e8f0;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Section/View Specific Containers */
+        .view-container {
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1), 0 4px 8px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        #homeView { max-width: 6xl; }
+        #addRecordView { max-width: 3xl; }
+        #familyDetailsView { max-width: 5xl; }
+        #recordDetailsView { max-width: 3xl; }
+        #manageSecondaryMembersView { max-width: 4xl; }
+        #addVisitView { max-width: 3xl; } /* New view for adding visits */
+        #memberVisitsView { max-width: 4xl; } /* New view for displaying member visits */
+
+
+        /* Form Group Styles */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            color: #4b5563; /* gray-600 */
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="number"],
+        input[type="date"],
+        input[type="datetime-local"], /* Added for visit_datetime */
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e0; /* gray-300 */
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            color: #1f2937; /* gray-900 */
+            transition: all 0.2s ease-in-out;
+        }
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="tel"]:focus,
+        input[type="number"]:focus,
+        input[type="date"]:focus,
+        input[type="datetime-local"]:focus, /* Added for visit_datetime */
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #5E237C; /* Custom purple from logo */
+            box-shadow: 0 0 0 3px rgba(94, 35, 124, 0.25); /* Custom purple with opacity */
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 0.75rem;
+            transform: scale(1.2); /* Slightly larger checkbox */
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 2rem;
+        }
+        .action-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn-primary {
+            background-color: #5E237C; /* Custom purple from logo */
+            color: white;
+            border: 1px solid #5E237C;
+        }
+        .btn-primary:hover {
+            background-color: #4A1C63; /* Darker purple for hover */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .btn-secondary {
+            background-color: #99CC33; /* Custom green from logo */
+            color: #374151; /* Dark gray for contrast */
+            border: 1px solid #99CC33;
+        }
+        .btn-secondary:hover {
+            background-color: #7AA329; /* Darker green for hover */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .btn-delete {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            border: 1px solid #ef4444;
+        }
+        .btn-delete:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+
+        /* Message Box */
+        .message-box {
+            padding: 0.75rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-weight: 500;
+        }
+        .message-box.success {
+            background-color: #d1fae5; /* green-100 */
+            color: #065f46; /* green-800 */
+        }
+        .message-box.error {
+            background-color: #fee2e2; /* red-100 */
+            color: #991b1b; /* red-800 */
+        }
+
+        /* Table Styles (for home and manage secondary members) */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background-color: #e2e8f0;
+            color: #4a5568;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+        tr:hover {
+            background-color: #f7fafc;
+        }
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 8px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Specific Row Styles for Home View */
+        .selected-row {
+            background-color: #bfdbfe; /* Light blue for selected row */
+            border-left: 4px solid #3b82f6; /* Blue border to highlight */
+        }
+        .expired-membership-row {
+            background-color: #fee2e2; /* Tailwind red-100 */
+        }
+        .expired-membership-row:hover {
+            background-color: #fecaca; /* Tailwind red-200 */
+        }
+        .expiring-soon-row {
+            background-color: #fcd34d; /* More prominent amber color (Tailwind amber-300) */
+        }
+        .expiring-soon-row:hover {
+            background-color: #fbbf24; /* Darker amber on hover (Tailwind amber-400) */
+        }
+        .founding-family-row {
+            background-color: #dcfce7; /* Tailwind green-100 */
+        }
+        .founding-family-row:hover {
+            background-color: #bbf7d0; /* Slightly darker green on hover */
+        }
+        .missing-info-row {
+            border-left: 4px solid #f59e0b; /* Yellow border for missing info */
+        }
+        .missing-info-row:hover {
+            background-color: #fff7e6; /* Lighter yellow on hover */
+        }
+        @keyframes sparkle-pulse {
+            0% { background-position: 0% 50%; transform: scale(1); }
+            50% { background-position: 100% 50%; transform: scale(1.005); }
+            100% { background-position: 0% 50%; transform: scale(1); }
+        }
+        .sparkly-birthday-row {
+            /* Adjusted to new theme colors */
+            background: linear-gradient(90deg, #d8b4fe, #a78bfa, #5E237C, #a78bfa, #d8b4fe);
+            background-size: 300% 100%;
+            animation: sparkle-pulse 4s infinite linear;
+            font-weight: bold;
+            color: #fff; /* White text for contrast */
+            border: 3px solid #5E237C; /* Custom purple border */
+            box-shadow: 0 0 15px rgba(94, 35, 124, 0.8), 0 0 25px rgba(94, 35, 124, 0.5);
+            transform: translateZ(0);
+            position: relative;
+            z-index: 10;
+        }
+        .sparkly-birthday-row:hover {
+            background-color: #4A1C63; /* Darker purple on hover */
+            box-shadow: 0 0 20px rgba(94, 35, 124, 1), 0 0 35px rgba(94, 35, 124, 0.7);
+        }
+
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #99CC33; /* Custom green */
+        }
+        input:focus + .slider {
+            box-shadow: 0 0 1px #99CC33;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Family Details Specific Styles */
+        .section-header {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #374151; /* gray-700 */
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #e5e7eb; /* gray-200 */
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            padding: 0.75rem;
+            background-color: #f9fafb; /* gray-50 */
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #4b5563; /* gray-600 */
+            font-size: 0.875rem; /* text-sm */
+            margin-bottom: 0.25rem;
+        }
+        .detail-value {
+            color: #1f2937; /* gray-900 */
+            font-size: 1rem;
+            word-break: break-word;
+        }
+        .member-card {
+            background-color: #f3f4f6; /* gray-100 */
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .member-card-header {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 600;
+            color: #1f2937;
+            border-bottom: 1px solid #d1d5db; /* gray-300 */
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .member-card-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem 1rem;
+        }
+        .member-card-detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .member-card-detail-label {
+            font-weight: 500;
+            color: #6b7280; /* gray-500 */
+            font-size: 0.8rem;
+        }
+        .member-card-detail-value {
+            color: #374151; /* gray-700 */
+            font-size: 0.9rem;
+        }
+        
+        /* UPDATED: Styles for the new combined membership box */
+        .membership-dates-box {
+            grid-column: span 2; /* Make the box span two columns */
+            padding: 1rem;
+        }
+        .membership-dates-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            align-items: end; /* Aligns input and text to the bottom */
+        }
+        .date-field-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .date-field-label {
+            font-weight: 500;
+            color: #6b7280; /* gray-500 */
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+        }
+        .detail-value-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            color: #1f2937;
+        }
+        #updateMembershipBtn.w-full {
+            width: 100%;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        /* END UPDATED STYLES */
+
+        /* Visit cards in the new view */
+        .visit-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        .visit-card {
+            background-color: #f3f4f6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            font-size: 0.95rem;
+            color: #374151;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .visit-card strong {
+            color: #1f2937;
+        }
+        .all-visits-scroll-area {
+            max-height: 250px; /* Fixed height for scrollable area */
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            background-color: #f9fafb;
+        }
+        .all-visits-scroll-area p {
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+        .all-visits-scroll-area p:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        /* Calendar Styles */
+        .calendar {
+            width: 100%;
+            max-width: 400px; /* Max width for the calendar */
+            margin: 1.5rem auto;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 1rem;
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        .calendar-header button {
+            background-color: #E9D5FF; /* Light purple from theme */
+            color: #5E237C; /* Custom purple from logo */
+            border: none;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .calendar-header button:hover {
+            background-color: #D8B4FE; /* Darker light purple */
+        }
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-weight: 600;
+            color: #6b7280; /* gray-500 */
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.25rem;
+            text-align: center;
+        }
+        .calendar-day {
+            padding: 0.75rem 0.5rem;
+            border-radius: 0.5rem;
+            background-color: #f9fafb; /* gray-50 */
+            color: #1f2937;
+            font-size: 0.9rem;
+            min-height: 40px; /* Ensure consistent height */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .calendar-day.empty {
+            background-color: transparent;
+            border: none;
+        }
+        .calendar-day.current-day {
+            background-color: #bfdbfe; /* blue-200 */
+            font-weight: bold;
+            color: #1e40af; /* blue-800 */
+            border: 1px solid #60a5fa; /* blue-400 */
+        }
+        .calendar-day.visited-day {
+            background-color: #d1fae5; /* green-100 */
+            font-weight: bold;
+            color: #065f46; /* green-800 */
+            border: 1px solid #34d399; /* green-400 */
+            box-shadow: 0 0 5px rgba(52, 211, 153, 0.5);
+        }
+        .calendar-day.visited-day.current-day {
+            background-color: #a7f3d0; /* green-200 */
+            border-color: #10b981; /* green-500 */
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="text-center mb-6">
+            <img src="logo.png" alt="The Childrens Museum Logo" class="mx-auto h-20 sm:h-24 mb-4">
+        </div>
+        <div id="messageBox" class="hidden p-3 mb-6 rounded-lg text-center font-medium transition-opacity duration-300 ease-in-out" role="alert"></div>
+        <div id="globalLoadingIndicator" class="hidden text-center my-8 text-blue-600 font-semibold text-lg">
+            <svg class="animate-spin h-8 w-8 mx-auto mb-3" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p>Processing request, please wait...</p>
+        </div>
+
+        <section id="homeView" class="view-container">
+            </section>
+        <section id="addRecordView" class="view-container hidden">
+            </section>
+        <section id="familyDetailsView" class="view-container hidden">
+            <h1 class="text-3xl font-extrabold text-center text-gray-900 mb-6">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-800 to-indigo-900">
+                    Family Details
+                </span>
+            </h1>
+            <div id="familyDetailsContent">
+                <section class="mb-8">
+                    <h2 class="section-header">Family Overview (<span id="displayMemberId"></span>)</h2>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Address:</span>
+                            <span id="familyAddress" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">City:</span>
+                            <span id="familyCity" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">State:</span>
+                            <span id="familyState" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Zip Code:</span>
+                            <span id="familyZipCode" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Email:</span>
+                            <span id="familyEmail" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Founding Family:</span>
+                            <span id="familyFoundingFamily" class="detail-value"></span>
+                        </div>
+                        <div id="updateMembershipContainer" class="detail-item membership-dates-box">
+                            <span class="detail-label">Membership Dates:</span>
+                            <div class="membership-dates-grid">
+                                <div class="date-field-group">
+                                    <label for="editMemStartDate" class="date-field-label">Start Date:</label>
+                                    <input type="date" id="editMemStartDate" class="detail-value-input">
+                                </div>
+                                <div class="date-field-group">
+                                    <label class="date-field-label">End Date:</label>
+                                    <span id="familyMembershipExpires" class="detail-value"></span>
+                                </div>
+                            </div>
+                            <button id="updateMembershipBtn" class="action-button btn-primary w-full">
+                                Update Membership
+                            </button>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Family Active Status:</span>
+                            <span id="familyActiveFlag" class="detail-value"></span>
+                        </div>
+                    </div>
+                </section>
+                <section>
+                    <h2 class="section-header">Individual Family Members</h2>
+                    <div id="individualMembersList">
+                        <p class="text-gray-600 text-center py-4">No individual members found for this family.</p>
+                    </div>
+                </section>
+            </div>
+            <div class="action-buttons">
+                <button id="familyDetailsManageSecondaryMembersBtn" class="action-button btn-primary">
+                    Manage Secondary Members
+                </button>
+                <button id="familyDetailsCloseBtn" class="action-button btn-secondary">
+                    Close Window
+                </button>
+            </div>
+        </section>
+        <section id="recordDetailsView" class="view-container hidden">
+            </section>
+        <section id="manageSecondaryMembersView" class="view-container hidden">
+            </section>
+        <section id="addVisitView" class="view-container hidden">
+            </section>
+        <section id="memberVisitsView" class="view-container hidden">
+            </section>
+    </div>
+    <div id="todaysVisitsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        </div>
+
+    <script>
+        // --- Global Variables and Utility Functions ---
+        let allData = [];
+        let currentView = 'home';
+        let currentFamilyId = null;
+        let currentMemberName = null;
+        let currentMemberLastName = null;
+        let currentIsPrimary = false;
+        const BASE_API_URL = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api';
+        const messageBox = document.getElementById('messageBox');
+        const globalLoadingIndicator = document.getElementById('globalLoadingIndicator');
+        const homeView = document.getElementById('homeView');
+        const addRecordView = document.getElementById('addRecordView');
+        const familyDetailsView = document.getElementById('familyDetailsView');
+        const recordDetailsView = document.getElementById('recordDetailsView');
+        const manageSecondaryMembersView = document.getElementById('manageSecondaryMembersView');
+        const addVisitView = document.getElementById('addVisitView');
+        const memberVisitsView = document.getElementById('memberVisitsView');
+        const displayMemberId = document.getElementById('displayMemberId');
+        const familyAddress = document.getElementById('familyAddress');
+        const familyCity = document.getElementById('familyCity');
+        const familyState = document.getElementById('familyState');
+        const familyZipCode = document.getElementById('familyZipCode');
+        const familyEmail = document.getElementById('familyEmail');
+        const familyFoundingFamily = document.getElementById('familyFoundingFamily');
+        const familyMembershipExpires = document.getElementById('familyMembershipExpires');
+        const familyActiveFlag = document.getElementById('familyActiveFlag');
+        const updateMembershipContainer = document.getElementById('updateMembershipContainer');
+        const editMemStartDate = document.getElementById('editMemStartDate');
+        const updateMembershipBtn = document.getElementById('updateMembershipBtn');
+        const individualMembersList = document.getElementById('individualMembersList');
+        const familyDetailsManageSecondaryMembersBtn = document.getElementById('familyDetailsManageSecondaryMembersBtn');
+        const familyDetailsCloseBtn = document.getElementById('familyDetailsCloseBtn');
+        let primaryMemberRecord = null;
+        
+        // --- All other functions (showView, showMessage, formatDate, etc.) would be here ---
+        // For brevity, only the relevant functions are shown below.
+        
+        function showMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box ' + (type === 'error' ? 'error' : 'success');
+            messageBox.classList.remove('hidden');
+            setTimeout(() => { messageBox.classList.add('hidden'); }, 5000);
+        }
+
+        function showView(viewId) {
+            document.querySelectorAll('.view-container').forEach(view => view.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+            currentView = viewId;
+        }
+
+        function parseDateRobustly(dateStr) {
+            if (!dateStr) return null;
+            if (dateStr.includes('T')) {
+                return new Date(dateStr);
+            }
+            return new Date(dateStr + 'T00:00:00');
+        }
+
+        function formatDate(dateObj) {
+            if (!dateObj || isNaN(dateObj.getTime())) return 'N/A';
+            return dateObj.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+        }
+        
+        function formatDateForInput(dateObj) {
+            if (!dateObj || isNaN(dateObj.getTime())) return '';
+            const year = dateObj.getFullYear();
+            const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+            const day = dateObj.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        async function fetchAllData() {
+            // Function to fetch all data from API
+        }
+
+        // --- Family Details View Logic (Relevant functions) ---
+        async function renderFamilyDetailsView() {
+            showView('familyDetailsView');
+            globalLoadingIndicator.classList.remove('hidden');
+            document.getElementById('familyDetailsContent').classList.add('hidden');
+
+            if (!currentFamilyId) {
+                showMessage('No family ID selected.', 'error');
+                globalLoadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const familyMembers = allData.filter(member => member.member_id === currentFamilyId);
+                if (familyMembers.length > 0) {
+                    primaryMemberRecord = familyMembers.find(m => m.primary_member === true) || familyMembers[0];
+                    
+                    const memStartDateObj = parseDateRobustly(primaryMemberRecord.mem_start_date);
+                    const membershipExpiresObj = parseDateRobustly(primaryMemberRecord.membership_expires);
+
+                    displayMemberId.textContent = currentFamilyId;
+                    familyAddress.textContent = primaryMemberRecord.address || 'N/A';
+                    familyCity.textContent = primaryMemberRecord.city || 'N/A';
+                    familyState.textContent = primaryMemberRecord.state || 'N/A';
+                    familyZipCode.textContent = primaryMemberRecord.zip_code || 'N/A';
+                    familyEmail.textContent = primaryMemberRecord.email || 'N/A';
+
+                    familyFoundingFamily.textContent = primaryMemberRecord.founding_family ? 'Yes' : 'No';
+                    familyActiveFlag.textContent = primaryMemberRecord.active_flag ? 'Active' : 'Inactive';
+                    
+                    if (primaryMemberRecord.founding_family) {
+                        familyMembershipExpires.textContent = 'N/A - Founding';
+                        updateMembershipContainer.style.display = 'none';
+                    } else {
+                        editMemStartDate.value = formatDateForInput(memStartDateObj);
+                        familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
+                        updateMembershipContainer.style.display = 'flex';
+                    }
+                    
+                    individualMembersList.innerHTML = '';
+                    // ... logic to render individual member cards ...
+                    
+                    document.getElementById('familyDetailsContent').classList.remove('hidden');
+                } else {
+                    showMessage('Family not found.', 'error');
+                }
+            } catch (error) {
+                console.error('Error rendering family details:', error);
+                showMessage(`Error: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+            }
+        }
+        
+        // --- Event Listeners and Initial Load ---
+        updateMembershipBtn.addEventListener('click', async () => {
+            const selectedDateString = editMemStartDate.value;
+            if (!selectedDateString) {
+                showMessage('Please select a Membership Start Date.', 'error');
+                return;
+            }
+            if (!primaryMemberRecord) {
+                showMessage('Error: Primary member record not found for updating membership.', 'error');
+                return;
+            }
+
+            globalLoadingIndicator.classList.remove('hidden');
+            updateMembershipBtn.disabled = true;
+
+            try {
+                const newMemStartDateISO = new Date(selectedDateString + 'T00:00:00').toISOString().split('T')[0];
+
+                const updatedData = {
+                    mem_start_date: newMemStartDateISO,
+                    is_primary: true
+                };
+                
+                const response = await fetch(`${BASE_API_URL}/update_record/${primaryMemberRecord.member_id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                }
+
+                const result = await response.json();
+                showMessage(result.message || 'Membership dates and status updated successfully!', 'success');
+                
+                await fetchAllData();
+                await renderFamilyDetailsView();
+
+            } catch (error) {
+                console.error('Error updating membership dates:', error);
+                showMessage(`Failed to update membership: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+                updateMembershipBtn.disabled = false;
+            }
+        });
+
+        familyDetailsManageSecondaryMembersBtn.addEventListener('click', () => {
+            if (currentFamilyId) {
+                showView('manageSecondaryMembersView');
+                document.getElementById('manageSecondaryFamilyIdDisplay').textContent = currentFamilyId;
+                // fetchManageSecondaryMembers(); // Assume this function exists
+                // resetManageSecondaryAddForm(); // Assume this function exists
+            } else {
+                showMessage('No family selected to manage secondary members.', 'error');
+            }
+        });
+
+        familyDetailsCloseBtn.addEventListener('click', () => {
+            showView('homeView');
+            currentFamilyId = null;
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // await fetchAllData();
+            showView('homeView');
+        });
+        
+    </script>
+</body>
+</html>
