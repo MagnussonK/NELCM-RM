@@ -23,7 +23,7 @@ RUN mkdir lib && \
     cp /usr/lib64/libltdl.so.* ./lib/
 
 # Copy your application code and config file
-COPY app.py lambda.py odbcinst.ini ./
+COPY app.py lambda.py ses_handler.py renewal_trigger.py odbcinst.ini ./
 
 # Set environment variables to use our packaged libraries and config
 ENV LD_LIBRARY_PATH=./lib

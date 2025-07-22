@@ -1758,7 +1758,7 @@ function renderHomeTable(dataToRender) {
          * Calls the backend to initiate the sending of renewal emails.
          */
         async function sendRenewalEmails() {
-            if (!confirm("Are you sure you want to run the monthly renewal email process? This will send (simulated) emails to all members expiring this month who have not yet received a notice.")) {
+            if (!confirm("Are you sure you want to run the monthly renewal email process? This will send emails to all members expiring this month who have not yet received a notice.")) {
                 return;
             }
 
