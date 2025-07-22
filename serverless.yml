@@ -58,4 +58,4 @@ functions:
       command:
         - ses_handler.handler # Point to the new handler
     events:
-      - sns: nelcm-ses-events # Subscribe to this SNS topic
+      - sns: nelcm-ses-events
