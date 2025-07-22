@@ -88,6 +88,10 @@
             border-color: #5E237C; /* Custom purple from logo */
             box-shadow: 0 0 0 3px rgba(94, 35, 124, 0.25); /* Custom purple with opacity */
         }
+        input:disabled {
+            background-color: #e5e7eb;
+            cursor: not-allowed;
+        }
         .checkbox-group {
             display: flex;
             align-items: center;
@@ -701,7 +705,7 @@
                                 <div class="flex-grow space-y-3">
                                     <div>
                                         <label for="editMemStartDate" class="detail-label text-sm !mb-1">Start Date:</label>
-                                        <input type="date" id="editMemStartDate" class="w-full">
+                                        <input type="date" id="editMemStartDate" class="w-full" disabled>
                                     </div>
                                     <div>
                                         <label class="detail-label text-sm !mb-1">End Date:</label>
@@ -2061,6 +2065,7 @@ function renderHomeTable(dataToRender) {
                 if (familyMembers.length > 0) {
                     primaryMemberRecord = familyMembers.find(m => m.primary_member === true) || familyMembers[0];
                     
+                    const memStartDateObj = parseDateRobustly(primaryMemberRecord.mem_start_date);
                     const membershipExpiresObj = parseDateRobustly(primaryMemberRecord.membership_expires);
 
                     displayMemberId.textContent = currentFamilyId;
@@ -2078,8 +2083,7 @@ function renderHomeTable(dataToRender) {
                         updateMembershipContainer.style.display = 'none';
                     } else {
                         familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
-                        // Default the renewal start date to today for convenience
-                        editMemStartDate.value = formatDateForInput(new Date());
+                        editMemStartDate.value = formatDateForInput(memStartDateObj);
                         updateMembershipContainer.style.display = 'block';
                     }
 
