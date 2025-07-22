@@ -43,3 +43,10 @@ functions:
       - httpApi:
           path: /api/{proxy+}
           method: any
+          
+  renewalEmailTrigger:
+    image:
+      name: appimage # Reuse the same ECR image
+    handler: renewal_trigger.handler # Point to the new handler file and function
+    events:
+      - schedule: cron(0 12 1 * ? *) # Runs at 12:00 PM UTC on the 1st day of every month
