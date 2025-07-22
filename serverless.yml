@@ -51,3 +51,11 @@ functions:
         - renewal_trigger.handler # Correctly override the Docker CMD for this function
     events:
       - schedule: cron(0 12 1 * ? *) # Runs at 12:00 PM UTC on the 1st day of every month
+      
+  sesHandler:
+    image:
+      name: appimage # Reuse the same ECR image
+      command:
+        - ses_handler.handler # Point to the new handler
+    events:
+      - sns: nelcm-ses-events # Subscribe to this SNS topic
