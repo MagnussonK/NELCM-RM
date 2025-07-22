@@ -252,8 +252,8 @@ def add_record():
 
         # Insert into members table
         cursor.execute("""
-            INSERT INTO members (member_id, name, last_name, phone, birthday, gender, primary_member, secondary_member)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            NSERT INTO family (member_id, address, city, state, zip_code, email, founding_family, mem_start_date, membership_expires, active_flag, email_renewal_flag)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, 
         member_id, data.get('name'), data.get('last_name'), data.get('phone'),
         data.get('birthday'), data.get('gender'), True, False)
@@ -344,7 +344,7 @@ def update_record(member_id):
                 
                 # Add/overwrite the membership_expires in the data dict
                 data['membership_expires'] = date(expiry_year, expiry_month, last_day)
-                data['email_renewal_flag'] = True
+                data['email_renewal_flag'] = False
 
             family_keys = ['address', 'city', 'state', 'zip_code', 'email', 'founding_family', 'mem_start_date', 'membership_expires', 'active_flag', 'email_renewal_flag']
             family_clauses = [f"{key} = ?" for key in data if key in family_keys]
