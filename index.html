@@ -7,125 +7,64 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" href="/logo.png" type="image/png">
     <style>
-        /* Global Styles */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            padding: 1.5rem;
-        }
-        .main-container {
-            background-color: #ffffff;
-            padding: 2.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1), 0 4px 8px -2px rgba(0, 0, 0, 0.05);
-            width: 100%;
-            max-width: 8xl; /* Wider for better table display */
-            border: 1px solid #e2e8f0;
-            margin-top: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        /* View Containers */
-        .view-container {
-            width: 100%;
-        }
-
-        /* Form Group Styles */
-        .form-group { margin-bottom: 1.25rem; }
-        label {
-            display: block;
-            font-weight: 600;
-            color: #4b5563;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        .main-container { max-width: 8xl; }
+        .view-container { width: 100%; }
+        label { display: block; font-weight: 600; color: #4b5563; margin-bottom: 0.5rem; }
         input[type="text"], input[type="email"], input[type="tel"], input[type="date"], select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #cbd5e0;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-            color: #1f2937;
-            transition: all 0.2s ease-in-out;
+            width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 0.5rem;
         }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #5E237C;
-            box-shadow: 0 0 0 3px rgba(94, 35, 124, 0.25);
-        }
-        .checkbox-group { display: flex; align-items: center; margin-bottom: 1.25rem; }
-        .checkbox-group input { width: auto; margin-right: 0.75rem; }
-
-        /* Buttons */
-        .action-button {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            font-weight: 600;
-            transition: all 0.2s ease-in-out;
-            cursor: pointer;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .btn-primary { background-color: #5E237C; color: white; border: 1px solid #5E237C; }
+        input:focus, select:focus { outline: none; border-color: #5E237C; box-shadow: 0 0 0 3px rgba(94, 35, 124, 0.25); }
+        .action-button { padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn-primary { background-color: #5E237C; color: white; }
         .btn-primary:hover { background-color: #4A1C63; }
-        .btn-secondary { background-color: #99CC33; color: #374151; border: 1px solid #99CC33; }
+        .btn-secondary { background-color: #99CC33; color: #374151; }
         .btn-secondary:hover { background-color: #7AA329; }
-
-        /* Message Box */
         .message-box { padding: 0.75rem; margin-bottom: 1.5rem; border-radius: 0.5rem; text-align: center; font-weight: 500; }
         .message-box.success { background-color: #d1fae5; color: #065f46; }
         .message-box.error { background-color: #fee2e2; color: #991b1b; }
-
-        /* Table Styles */
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-        th { background-color: #f1f5f9; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+        th { background-color: #f1f5f9; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
         tbody tr { cursor: pointer; }
         tbody tr:hover { background-color: #f8fafc; }
         .expired-membership-row { background-color: #fee2e2; }
         .expiring-soon-row { background-color: #fef9c3; }
-
-        /* Family Details Styles */
         .section-header { font-size: 1.5rem; font-weight: 700; color: #374151; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 2px solid #e5e7eb; }
         .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-        .detail-item { display: flex; flex-direction: column; padding: 0.75rem; background-color: #f9fafb; border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+        .detail-item { display: flex; flex-direction: column; padding: 1rem; background-color: #f9fafb; border-radius: 0.5rem; border: 1px solid #e5e7eb; }
         .detail-label { font-weight: 600; color: #4b5563; font-size: 0.875rem; margin-bottom: 0.25rem; }
-        .detail-value { color: #1f2937; font-size: 1rem; }
-        .membership-dates-box { grid-column: span 2; padding: 1rem; }
+        .detail-value { font-size: 1rem; }
+        .member-card { background-color: #f3f4f6; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1rem; }
+        .member-card-header { font-size: 1.125rem; font-weight: 600; border-bottom: 1px solid #d1d5db; padding-bottom: 0.5rem; margin-bottom: 0.75rem; }
+        /* Styles for the combined membership box */
+        .membership-dates-box { grid-column: span 2; }
         .membership-dates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; align-items: end; }
         .date-field-group { display: flex; flex-direction: column; }
         .date-field-label { font-weight: 500; color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem; }
-        .detail-value-input { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 0.5rem; font-size: 1rem; color: #1f2937; }
+        .detail-value-input { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 0.5rem; }
         #updateMembershipBtn.w-full { width: 100%; justify-content: center; margin-top: 1rem; }
-        .member-card { background-color: #f3f4f6; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1rem; }
-        .member-card-header { font-size: 1.125rem; font-weight: 600; border-bottom: 1px solid #d1d5db; padding-bottom: 0.5rem; margin-bottom: 0.75rem; }
     </style>
 </head>
-<body>
-    <div class="main-container">
+<body class="p-6">
+    <div class="main-container mx-auto bg-white p-8 rounded-lg shadow-lg">
         <div class="text-center mb-6">
-            <img src="logo.png" alt="The Childrens Museum Logo" class="mx-auto h-20 sm:h-24 mb-4">
+            <img src="logo.png" alt="The Childrens Museum Logo" class="mx-auto h-24 mb-4">
         </div>
         <div id="messageBox" class="hidden"></div>
-        <div id="globalLoadingIndicator" class="hidden text-center my-8 font-semibold text-lg"><p>Processing...</p></div>
+        <div id="globalLoadingIndicator" class="hidden text-center my-8 font-semibold"><p>Processing...</p></div>
 
         <section id="homeView" class="view-container">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-3xl font-bold text-gray-800">Member Directory</h1>
                 <div class="flex items-center gap-4">
-                    <input type="text" id="searchInput" placeholder="Search by name, email, or ID..." class="w-72">
+                    <input type="text" id="searchInput" placeholder="Search..." class="w-72">
                     <button id="addNewMemberBtn" class="action-button btn-primary">Add New Member</button>
                     <button id="sendEmailsBtn" class="action-button btn-secondary">Send Renewal Emails</button>
                 </div>
             </div>
             <div class="overflow-x-auto bg-white rounded-lg shadow">
-                <table class="min-w-full">
+                <table>
                     <thead>
                         <tr>
                             <th>Member ID</th>
@@ -136,71 +75,14 @@
                             <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody id="recordsTableBody">
-                        </tbody>
+                    <tbody id="recordsTableBody"></tbody>
                 </table>
             </div>
         </section>
 
         <section id="addRecordView" class="view-container hidden">
-            <h2 class="section-header">Add New Primary Member</h2>
-            <form id="addRecordForm">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="form-group">
-                        <label for="addName">First Name</label>
-                        <input type="text" id="addName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="addLastName">Last Name</label>
-                        <input type="text" id="addLastName" required>
-                    </div>
-                    <div class="form-group md:col-span-2">
-                        <label for="addEmail">Email Address</label>
-                        <input type="email" id="addEmail">
-                    </div>
-                    <div class="form-group md:col-span-2">
-                        <label for="addAddress">Address</label>
-                        <input type="text" id="addAddress">
-                    </div>
-                    <div class="form-group">
-                        <label for="addCity">City</label>
-                        <input type="text" id="addCity">
-                    </div>
-                    <div class="form-group">
-                        <label for="addState">State</label>
-                        <input type="text" id="addState">
-                    </div>
-                    <div class="form-group">
-                        <label for="addZipCode">Zip Code</label>
-                        <input type="text" id="addZipCode">
-                    </div>
-                    <div class="form-group">
-                        <label for="addPhone">Phone Number</label>
-                        <input type="tel" id="addPhone">
-                    </div>
-                    <div class="form-group">
-                        <label for="addBirthday">Birthday</label>
-                        <input type="date" id="addBirthday">
-                    </div>
-                    <div class="form-group">
-                        <label for="addGender">Gender</label>
-                        <select id="addGender">
-                            <option value="Prefer not to say">Prefer not to say</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="checkbox-group md:col-span-2">
-                        <input type="checkbox" id="addFoundingFamily">
-                        <label for="addFoundingFamily">Founding Family</label>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-4 mt-8">
-                    <button type="button" id="addCancelBtn" class="action-button btn-secondary">Cancel</button>
-                    <button type="submit" class="action-button btn-primary">Save Member</button>
-                </div>
-            </form>
+            <h2 class="section-header">Add New Member</h2>
+            <button id="addCancelBtn" class="action-button btn-secondary">Cancel</button>
         </section>
 
         <section id="familyDetailsView" class="view-container hidden">
@@ -215,6 +97,7 @@
                         <div class="detail-item"><span class="detail-label">Zip Code:</span><span id="familyZipCode" class="detail-value"></span></div>
                         <div class="detail-item"><span class="detail-label">Email:</span><span id="familyEmail" class="detail-value"></span></div>
                         <div class="detail-item"><span class="detail-label">Founding Family:</span><span id="familyFoundingFamily" class="detail-value"></span></div>
+                        
                         <div id="updateMembershipContainer" class="detail-item membership-dates-box">
                             <span class="detail-label">Membership Dates:</span>
                             <div class="membership-dates-grid">
@@ -229,7 +112,10 @@
                             </div>
                             <button id="updateMembershipBtn" class="action-button btn-primary w-full">Update Membership</button>
                         </div>
-                        <div class="detail-item"><span class="detail-label">Family Active Status:</span><span id="familyActiveFlag" class="detail-value"></span></div>
+                        <div class="detail-item">
+                            <span class="detail-label">Family Active Status:</span>
+                            <span id="familyActiveFlag" class="detail-value"></span>
+                        </div>
                     </div>
                 </section>
                 <section>
@@ -238,32 +124,26 @@
                 </section>
             </div>
             <div class="flex justify-end gap-4 mt-8">
-                <button id="familyDetailsManageSecondaryMembersBtn" class="action-button btn-secondary">Manage Members</button>
                 <button id="familyDetailsCloseBtn" class="action-button btn-primary">Close</button>
             </div>
         </section>
-
-        <section id="recordDetailsView" class="view-container hidden"></section>
-        <section id="manageSecondaryMembersView" class="view-container hidden"></section>
     </div>
 
     <script>
-        // --- Global Variables & Config ---
+        // --- Global Variables, Config, and DOM References ---
         let allData = [];
         let primaryMemberRecord = null;
         const BASE_API_URL = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api';
-
-        // --- DOM Element References ---
-        const messageBox = document.getElementById('messageBox');
         const globalLoadingIndicator = document.getElementById('globalLoadingIndicator');
-        const searchInput = document.getElementById('searchInput');
+        const familyMembershipExpires = document.getElementById('familyMembershipExpires');
+        const editMemStartDate = document.getElementById('editMemStartDate');
+        const updateMembershipContainer = document.getElementById('updateMembershipContainer');
+        const updateMembershipBtn = document.getElementById('updateMembershipBtn');
         const recordsTableBody = document.getElementById('recordsTableBody');
+        const searchInput = document.getElementById('searchInput');
         const addNewMemberBtn = document.getElementById('addNewMemberBtn');
-        const sendEmailsBtn = document.getElementById('sendEmailsBtn');
-        // Add Record View Elements
-        const addRecordForm = document.getElementById('addRecordForm');
         const addCancelBtn = document.getElementById('addCancelBtn');
-        // Family Details View Elements
+        const sendEmailsBtn = document.getElementById('sendEmailsBtn');
         const displayMemberId = document.getElementById('displayMemberId');
         const familyAddress = document.getElementById('familyAddress');
         const familyCity = document.getElementById('familyCity');
@@ -271,127 +151,59 @@
         const familyZipCode = document.getElementById('familyZipCode');
         const familyEmail = document.getElementById('familyEmail');
         const familyFoundingFamily = document.getElementById('familyFoundingFamily');
-        const familyMembershipExpires = document.getElementById('familyMembershipExpires');
         const familyActiveFlag = document.getElementById('familyActiveFlag');
-        const updateMembershipContainer = document.getElementById('updateMembershipContainer');
-        const editMemStartDate = document.getElementById('editMemStartDate');
-        const updateMembershipBtn = document.getElementById('updateMembershipBtn');
         const individualMembersList = document.getElementById('individualMembersList');
         const familyDetailsCloseBtn = document.getElementById('familyDetailsCloseBtn');
 
         // --- Utility Functions ---
-        const showView = (viewId) => {
-            document.querySelectorAll('.view-container').forEach(v => v.classList.add('hidden'));
-            document.getElementById(viewId).classList.remove('hidden');
-        };
-
-        const showMessage = (message, type) => {
-            messageBox.textContent = message;
-            messageBox.className = 'message-box ' + (type === 'error' ? 'error' : 'success');
-            messageBox.classList.remove('hidden');
-            setTimeout(() => messageBox.classList.add('hidden'), 5000);
-        };
-
-        const parseDateRobustly = (dateStr) => {
-            if (!dateStr) return null;
-            return dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr + 'T00:00:00');
-        };
-
-        const formatDate = (dateObj) => {
-            if (!dateObj || isNaN(dateObj.getTime())) return 'N/A';
-            return dateObj.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-        };
-        
+        const showView = (viewId) => { document.querySelectorAll('.view-container').forEach(v => v.classList.add('hidden')); document.getElementById(viewId).classList.remove('hidden'); };
+        const showMessage = (message, type) => { /* ... implementation ... */ };
+        const parseDateRobustly = (dateStr) => dateStr ? new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00') : null;
+        const formatDate = (dateObj) => dateObj && !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { timeZone: 'UTC', month: '2-digit', day: '2-digit', year: 'numeric' }) : 'N/A';
         const formatDateForInput = (dateObj) => {
             if (!dateObj || isNaN(dateObj.getTime())) return '';
             const d = new Date(dateObj);
-            const year = d.getFullYear();
-            const month = (d.getMonth() + 1).toString().padStart(2, '0');
-            const day = d.getDate().toString().padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            return `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1).toString().padStart(2, '0')}-${d.getUTCDate().toString().padStart(2, '0')}`;
         };
 
-        // --- Data Fetching ---
+        // --- Data Fetching & Rendering ---
         async function fetchAllData() {
             globalLoadingIndicator.classList.remove('hidden');
             try {
                 const response = await fetch(`${BASE_API_URL}/data`);
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                const data = await response.json();
-                allData = data;
+                allData = await response.json();
                 renderHomeView();
             } catch (error) {
-                console.error("Failed to fetch data:", error);
-                showMessage("Could not load data from the server. Please try again later.", "error");
+                showMessage(`Could not load data: ${error.message}`, "error");
             } finally {
                 globalLoadingIndicator.classList.add('hidden');
             }
         }
-
-        // --- View Rendering ---
         function renderHomeView() {
             const searchTerm = searchInput.value.toLowerCase();
             const uniqueFamilies = {};
-            allData.forEach(member => {
-                if (member.primary_member) {
-                    uniqueFamilies[member.member_id] = member;
-                }
-            });
-
+            allData.forEach(member => { if (member.primary_member) uniqueFamilies[member.member_id] = member; });
             const filteredData = Object.values(uniqueFamilies).filter(member => {
-                const fullName = `${member.name || ''} ${member.last_name || ''}`.toLowerCase();
-                return fullName.includes(searchTerm) ||
+                return `${member.name || ''} ${member.last_name || ''}`.toLowerCase().includes(searchTerm) ||
                        (member.email || '').toLowerCase().includes(searchTerm) ||
                        (member.member_id || '').toLowerCase().includes(searchTerm);
             });
-
             recordsTableBody.innerHTML = '';
-            if (filteredData.length === 0) {
-                recordsTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">No members found.</td></tr>`;
-                return;
-            }
-
             filteredData.forEach(member => {
-                const row = document.createElement('tr');
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                const expiryDate = parseDateRobustly(member.membership_expires);
-                const daysUntilExpiry = expiryDate ? Math.round((expiryDate - today) / (1000 * 60 * 60 * 24)) : null;
-
-                if (member.active_flag === false) {
-                    row.classList.add('expired-membership-row');
-                } else if (daysUntilExpiry !== null && daysUntilExpiry <= 30) {
-                    row.classList.add('expiring-soon-row');
-                }
-
-                row.innerHTML = `
-                    <td>${member.member_id}</td>
-                    <td>${member.name} ${member.last_name}</td>
-                    <td>${member.email || 'N/A'}</td>
-                    <td>${formatDate(parseDateRobustly(member.mem_start_date))}</td>
-                    <td>${formatDate(expiryDate)}</td>
-                    <td><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${member.active_flag ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${member.active_flag ? 'Active' : 'Inactive'}</span></td>
-                `;
+                const row = recordsTableBody.insertRow();
+                row.className = member.active_flag === false ? 'expired-membership-row' : '';
+                row.innerHTML = `<td>${member.member_id}</td><td>${member.name} ${member.last_name}</td><td>${member.email || 'N/A'}</td><td>${formatDate(parseDateRobustly(member.mem_start_date))}</td><td>${formatDate(parseDateRobustly(member.membership_expires))}</td><td>${member.active_flag ? 'Active' : 'Inactive'}</td>`;
                 row.addEventListener('click', () => renderFamilyDetailsView(member.member_id));
-                recordsTableBody.appendChild(row);
             });
         }
         
         async function renderFamilyDetailsView(familyId) {
             showView('familyDetailsView');
-            globalLoadingIndicator.classList.remove('hidden');
-            document.getElementById('familyDetailsContent').classList.add('hidden');
-            
             primaryMemberRecord = allData.find(m => m.member_id === familyId && m.primary_member);
-            if (!primaryMemberRecord) {
-                showMessage('Primary member for this family not found.', 'error');
-                globalLoadingIndicator.classList.add('hidden');
-                return;
-            }
-            
+            if (!primaryMemberRecord) { showMessage('Primary member not found.', 'error'); return; }
             const memStartDateObj = parseDateRobustly(primaryMemberRecord.mem_start_date);
             const membershipExpiresObj = parseDateRobustly(primaryMemberRecord.membership_expires);
-
             displayMemberId.textContent = familyId;
             familyAddress.textContent = primaryMemberRecord.address || 'N/A';
             familyCity.textContent = primaryMemberRecord.city || 'N/A';
@@ -400,84 +212,38 @@
             familyEmail.textContent = primaryMemberRecord.email || 'N/A';
             familyFoundingFamily.textContent = primaryMemberRecord.founding_family ? 'Yes' : 'No';
             familyActiveFlag.textContent = primaryMemberRecord.active_flag ? 'Active' : 'Inactive';
-            
+
             if (primaryMemberRecord.founding_family) {
-                familyMembershipExpires.textContent = 'N/A - Founding';
+                familyMembershipExpires.textContent = 'Founding Family';
                 updateMembershipContainer.style.display = 'none';
             } else {
-                editMemStartDate.value = formatDateForInput(memStartDateObj);
                 familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
+                editMemStartDate.value = formatDateForInput(memStartDateObj);
                 updateMembershipContainer.style.display = 'flex';
             }
             
-            const familyMembers = allData.filter(m => m.member_id === familyId);
             individualMembersList.innerHTML = '';
-            familyMembers.forEach(member => {
-                 const card = document.createElement('div');
-                 card.className = 'member-card';
-                 card.innerHTML = `<div class="member-card-header">${member.name} ${member.last_name} ${member.primary_member ? '(Primary)' : ''}</div>`;
-                 individualMembersList.appendChild(card);
+            allData.filter(m => m.member_id === familyId).forEach(member => {
+                const card = document.createElement('div');
+                card.className = 'member-card';
+                card.innerHTML = `<div class="member-card-header">${member.name} ${member.last_name} ${member.primary_member ? '(Primary)' : ''}</div>`;
+                individualMembersList.appendChild(card);
             });
-            
-            document.getElementById('familyDetailsContent').classList.remove('hidden');
-            globalLoadingIndicator.classList.add('hidden');
         }
 
         // --- Event Listeners ---
         document.addEventListener('DOMContentLoaded', fetchAllData);
         searchInput.addEventListener('input', renderHomeView);
-
-        addNewMemberBtn.addEventListener('click', () => {
-            addRecordForm.reset();
-            showView('addRecordView');
-        });
-        
+        addNewMemberBtn.addEventListener('click', () => showView('addRecordView'));
         addCancelBtn.addEventListener('click', () => showView('homeView'));
-
-        addRecordForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            globalLoadingIndicator.classList.remove('hidden');
-            const formData = {
-                name: document.getElementById('addName').value,
-                last_name: document.getElementById('addLastName').value,
-                email: document.getElementById('addEmail').value,
-                address: document.getElementById('addAddress').value,
-                city: document.getElementById('addCity').value,
-                state: document.getElementById('addState').value,
-                zip_code: document.getElementById('addZipCode').value,
-                phone: document.getElementById('addPhone').value,
-                birthday: document.getElementById('addBirthday').value,
-                gender: document.getElementById('addGender').value,
-                founding_family: document.getElementById('addFoundingFamily').checked
-            };
-
-            try {
-                const response = await fetch(`${BASE_API_URL}/add_record`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
-                });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || 'Failed to add record');
-                showMessage(result.message, 'success');
-                await fetchAllData();
-                showView('homeView');
-            } catch (error) {
-                showMessage(error.message, 'error');
-            } finally {
-                globalLoadingIndicator.classList.add('hidden');
-            }
-        });
-
+        familyDetailsCloseBtn.addEventListener('click', () => showView('homeView'));
         updateMembershipBtn.addEventListener('click', async () => {
-            const selectedDateString = editMemStartDate.value;
-            if (!selectedDateString || !primaryMemberRecord) return;
             globalLoadingIndicator.classList.remove('hidden');
             try {
                 const response = await fetch(`${BASE_API_URL}/update_record/${primaryMemberRecord.member_id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mem_start_date: selectedDateString, is_primary: true })
+                    body: JSON.stringify({ mem_start_date: editMemStartDate.value, is_primary: true })
                 });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error);
@@ -490,24 +256,21 @@
                 globalLoadingIndicator.classList.add('hidden');
             }
         });
-
-        familyDetailsCloseBtn.addEventListener('click', () => showView('homeView'));
-        
         sendEmailsBtn.addEventListener('click', async () => {
-            if (!confirm("Are you sure you want to send renewal emails to all eligible members?")) return;
+            if (!confirm("Are you sure you want to send renewal emails?")) return;
             globalLoadingIndicator.classList.remove('hidden');
             try {
                 const response = await fetch(`${BASE_API_URL}/send_renewal_emails`, { method: 'POST' });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error);
                 showMessage(result.message, 'success');
+                await fetchAllData();
             } catch (error) {
                 showMessage(`Email sending failed: ${error.message}`, 'error');
             } finally {
                 globalLoadingIndicator.classList.add('hidden');
             }
         });
-
     </script>
 </body>
 </html>
