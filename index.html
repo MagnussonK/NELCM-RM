@@ -710,25 +710,28 @@
                             <span id="familyFoundingFamily" class="detail-value"></span>
                         </div>
                         <div class="detail-item">
-                            <span class="detail-label">Membership Start Date:</span>
-                            <span id="familyMemStartDate" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Membership Expires:</span>
-                            <span id="familyMembershipExpires" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
                             <span class="detail-label">Family Active Status:</span>
                             <span id="familyActiveFlag" class="detail-value"></span>
                         </div>
 
-                        <div id="updateMembershipContainer" class="detail-item">
-                            <label for="editMemStartDate" class="detail-label">Update Membership Start Date:</label>
-                            <div class="membership-action-group">
-                                <input type="date" id="editMemStartDate" class="detail-value">
-                                <button id="updateMembershipBtn" class="action-button btn-primary text-sm px-3 py-1.5">
-                                    Update Membership
-                                </button>
+                        <div id="updateMembershipContainer" class="detail-item md:col-span-2">
+                            <span class="detail-label font-bold text-base mb-3 border-b pb-2">Membership Dates:</span>
+                            <div class="flex items-end gap-4 pt-2">
+                                <div class="flex-grow space-y-3">
+                                    <div>
+                                        <label for="editMemStartDate" class="detail-label text-sm !mb-1">Start Date:</label>
+                                        <input type="date" id="editMemStartDate" class="w-full">
+                                    </div>
+                                    <div>
+                                        <label class="detail-label text-sm !mb-1">End Date:</label>
+                                        <span id="familyMembershipExpires" class="detail-value block p-2 bg-gray-200 rounded-md w-full text-center font-medium"></span>
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <button id="updateMembershipBtn" class="action-button btn-primary">
+                                        Update Membership
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2048,7 +2051,6 @@ function renderHomeTable(dataToRender) {
         const familyState = document.getElementById('familyState');
         const familyZipCode = document.getElementById('familyZipCode');
         const familyFoundingFamily = document.getElementById('familyFoundingFamily');
-        const familyMemStartDate = document.getElementById('familyMemStartDate');
         const familyMembershipExpires = document.getElementById('familyMembershipExpires');
         const familyActiveFlag = document.getElementById('familyActiveFlag');
         const familyEmail = document.getElementById('familyEmail');
@@ -2092,7 +2094,6 @@ function renderHomeTable(dataToRender) {
                     familyZipCode.textContent = primaryMemberRecord.zip_code || 'N/A';
                     familyEmail.textContent = primaryMemberRecord.email || 'N/A';
                     familyFoundingFamily.textContent = primaryMemberRecord.founding_family ? 'Yes' : 'No';
-                    familyMemStartDate.textContent = formatDate(memStartDateObj);
                     familyActiveFlag.textContent = primaryMemberRecord.active_flag ? 'Active' : 'Inactive';
 
                     if (primaryMemberRecord.founding_family) {
@@ -2101,7 +2102,7 @@ function renderHomeTable(dataToRender) {
                     } else {
                         familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
                         editMemStartDate.value = formatDateForInput(memStartDateObj);
-                        updateMembershipContainer.style.display = 'flex';
+                        updateMembershipContainer.style.display = 'block'; // Use 'block' or 'flex'
                     }
 
                     individualMembersList.innerHTML = '';
