@@ -686,32 +686,13 @@
                     <h2 class="section-header">Family Overview (<span id="displayMemberId"></span>)</h2>
                     <div class="detail-grid">
                         <div class="detail-item">
-                            <span class="detail-label">Address:</span>
+                            <span class="detail-label">Full Address:</span>
                             <span id="familyAddress" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">City:</span>
-                            <span id="familyCity" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">State:</span>
-                            <span id="familyState" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Zip Code:</span>
-                            <span id="familyZipCode" class="detail-value"></span>
+                            <span id="familyCityStateZip" class="detail-value"></span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Email:</span>
                             <span id="familyEmail" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Founding Family:</span>
-                            <span id="familyFoundingFamily" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Family Active Status:</span>
-                            <span id="familyActiveFlag" class="detail-value"></span>
                         </div>
 
                         <div id="updateMembershipContainer" class="detail-item md:col-span-2">
@@ -2047,12 +2028,8 @@ function renderHomeTable(dataToRender) {
         // --- Family Details View Logic ---
         const displayMemberId = document.getElementById('displayMemberId');
         const familyAddress = document.getElementById('familyAddress');
-        const familyCity = document.getElementById('familyCity');
-        const familyState = document.getElementById('familyState');
-        const familyZipCode = document.getElementById('familyZipCode');
-        const familyFoundingFamily = document.getElementById('familyFoundingFamily');
+        const familyCityStateZip = document.getElementById('familyCityStateZip');
         const familyMembershipExpires = document.getElementById('familyMembershipExpires');
-        const familyActiveFlag = document.getElementById('familyActiveFlag');
         const familyEmail = document.getElementById('familyEmail');
         const updateMembershipContainer = document.getElementById('updateMembershipContainer');
         const editMemStartDate = document.getElementById('editMemStartDate');
@@ -2084,25 +2061,26 @@ function renderHomeTable(dataToRender) {
                 if (familyMembers.length > 0) {
                     primaryMemberRecord = familyMembers.find(m => m.primary_member === true) || familyMembers[0];
                     
-                    const memStartDateObj = parseDateRobustly(primaryMemberRecord.mem_start_date);
                     const membershipExpiresObj = parseDateRobustly(primaryMemberRecord.membership_expires);
 
                     displayMemberId.textContent = currentFamilyId;
                     familyAddress.textContent = primaryMemberRecord.address || 'N/A';
-                    familyCity.textContent = primaryMemberRecord.city || 'N/A';
-                    familyState.textContent = primaryMemberRecord.state || 'N/A';
-                    familyZipCode.textContent = primaryMemberRecord.zip_code || 'N/A';
+                    
+                    const city = primaryMemberRecord.city || '';
+                    const state = primaryMemberRecord.state || '';
+                    const zip = primaryMemberRecord.zip_code || '';
+                    familyCityStateZip.textContent = `${city}${city && state ? ', ' : ''}${state} ${zip}`.trim() || 'N/A';
+                    
                     familyEmail.textContent = primaryMemberRecord.email || 'N/A';
-                    familyFoundingFamily.textContent = primaryMemberRecord.founding_family ? 'Yes' : 'No';
-                    familyActiveFlag.textContent = primaryMemberRecord.active_flag ? 'Active' : 'Inactive';
 
                     if (primaryMemberRecord.founding_family) {
                         familyMembershipExpires.textContent = 'Founding Family';
                         updateMembershipContainer.style.display = 'none';
                     } else {
                         familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
-                        editMemStartDate.value = formatDateForInput(memStartDateObj);
-                        updateMembershipContainer.style.display = 'block'; // Use 'block' or 'flex'
+                        // Default the renewal start date to today for convenience
+                        editMemStartDate.value = formatDateForInput(new Date());
+                        updateMembershipContainer.style.display = 'block';
                     }
 
                     individualMembersList.innerHTML = '';
@@ -2148,11 +2126,6 @@ function renderHomeTable(dataToRender) {
 
         // Family Details View Event Listeners
         updateMembershipBtn.addEventListener('click', async () => {
-            const selectedDateString = editMemStartDate.value;
-            if (!selectedDateString) {
-                showMessage('Please select a Membership Start Date.', 'error');
-                return;
-            }
             if (!primaryMemberRecord) {
                 showMessage('Error: Primary member record not found for updating membership.', 'error');
                 return;
@@ -2162,7 +2135,8 @@ function renderHomeTable(dataToRender) {
             updateMembershipBtn.disabled = true;
 
             try {
-                const newMemStartDateISO = new Date(selectedDateString + 'T00:00:00Z').toISOString().split('T')[0];
+                // When the button is clicked, always use the current date as the start date.
+                const newMemStartDateISO = new Date().toISOString().split('T')[0];
 
                 const updatedData = {
                     mem_start_date: newMemStartDateISO,
