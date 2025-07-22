@@ -299,12 +299,11 @@ def update_record(member_id):
 
     cursor = conn.cursor()
     try:
-        # Update members table
+        # This section updates the 'members' table and is correct.
         member_keys = ['name', 'last_name', 'phone', 'birthday', 'gender']
         member_clauses = [f"{key} = ?" for key in data if key in member_keys]
         member_params = [data[key] for key in data if key in member_keys]
         
-        # Add original name and last_name to WHERE clause for secondary members
         original_name = data.get('original_name')
         original_last_name = data.get('original_last_name')
         is_primary = data.get('is_primary', False)
@@ -312,17 +311,10 @@ def update_record(member_id):
         where_clause = " WHERE member_id = ?"
         params = member_params
         params.append(member_id)
-        
-#        if not is_primary and original_name and original_last_name:
-#            where_clause += " AND name = ? AND last_name = ?"
-#            params.append(original_name)
-#            params.append(original_last_name)
 
         if is_primary:
-            # If updating a primary member, target them specifically.
             where_clause += " AND primary_member = 1"
         elif original_name and original_last_name:
-            # This part correctly handles updating secondary members.
             where_clause += " AND name = ? AND last_name = ?"
             params.append(original_name)
             params.append(original_last_name)
@@ -331,24 +323,30 @@ def update_record(member_id):
             query_member = f"UPDATE members SET {', '.join(member_clauses)}{where_clause}"
             cursor.execute(query_member, tuple(params))
 
-        # Update family table (only for primary members)
+        # This section updates the 'family' table for the primary member.
         if is_primary:
-            # If mem_start_date is being updated, recalculate membership_expires
+            # --- CORRECTED LOGIC ---
+            # Start with fields that can always be updated from the web form.
+            family_keys = ['address', 'city', 'state', 'zip_code', 'email', 'founding_family', 'active_flag']
+            family_clauses = [f"{key} = ?" for key in data if key in family_keys]
+            family_params = [data[key] for key in data if key in family_keys]
+
+            # Separately, check if this is a membership renewal.
             if 'mem_start_date' in data and data['mem_start_date']:
                 mem_start_date_str = data['mem_start_date']
                 mem_start_date = datetime.strptime(mem_start_date_str, '%Y-%m-%d').date()
                 
+                # Calculate new expiration date
                 expiry_year = mem_start_date.year + 1
                 expiry_month = mem_start_date.month
                 _, last_day = calendar.monthrange(expiry_year, expiry_month)
+                membership_expires = date(expiry_year, expiry_month, last_day)
                 
-                # Add/overwrite the membership_expires in the data dict
-                data['membership_expires'] = date(expiry_year, expiry_month, last_day)
-                data['email_renewal_flag'] = True
-
-            family_keys = ['address', 'city', 'state', 'zip_code', 'email', 'founding_family', 'mem_start_date', 'membership_expires', 'active_flag', 'renewal_email_sent']
-            family_clauses = [f"{key} = ?" for key in data if key in family_keys]
-            family_params = [data[key] for key in data if key in family_keys]
+                # Manually add the renewal fields to the SQL command to ensure they are always included.
+                family_clauses.extend(['mem_start_date = ?', 'membership_expires = ?', 'renewal_email_sent = ?'])
+                family_params.extend([mem_start_date, membership_expires, True]) # Set flag to True (email doesn't need sending)
+            
+            # --- END CORRECTION ---
 
             if family_clauses:
                 family_params.append(member_id)
@@ -356,9 +354,6 @@ def update_record(member_id):
                 cursor.execute(query_family, tuple(family_params))
 
         conn.commit()
-
-        if cursor.rowcount == 0:
-            return jsonify({"message": "Record updated, but no rows were changed in the last operation."}), 200
 
         return jsonify({"message": "Record updated successfully!"}), 200
     except pyodbc.Error as ex:
