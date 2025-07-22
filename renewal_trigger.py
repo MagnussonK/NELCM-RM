@@ -124,3 +124,41 @@ def handler(event, context):
         if conn:
             conn.close()
             logger.info("Database connection closed.")
+            
+def send_renewal_reminder(recipient_email, member_name):
+    """Sends a membership renewal reminder email using SES."""
+    
+    ses_client = boto3.client("ses", region_name="us-east-1")
+    SENDER = "Your Verified Sender Email <sender@example.com>" # Replace with your email
+    SUBJECT = "Your Children's Museum Membership is Expiring Soon!"
+
+    BODY_HTML = f"""
+    <html>
+    <head></head>
+    <body>
+      <h1>Membership Renewal Reminder</h1>
+      <p>Hi {member_name},</p>
+      <p>This is a friendly reminder that your membership with The Children's Museum is expiring at the end of this month. We hope you'll renew and continue to be a part of our family!</p>
+      <p>Thank you,</p>
+      <p>The Children's Museum Team</p>
+    </body>
+    </html>
+    """
+
+    try:
+        response = ses_client.send_email(
+            Source=SENDER,
+            Destination={'ToAddresses': [recipient_email]},
+            Message={
+                'Body': {'Html': {'Charset': "UTF-8", 'Data': BODY_HTML}},
+                'Subject': {'Charset': "UTF-8", 'Data': SUBJECT},
+            },
+            # This line is CRITICAL for bounce and complaint handling
+            ConfigurationSetName='nelcm-transactional-config'
+        )
+    except ClientError as e:
+        print(f"Email failed to send: {e.response['Error']['Message']}")
+        return False
+    else:
+        print(f"Email sent successfully to {recipient_email}! Message ID: {response['MessageId']}")
+        return True
