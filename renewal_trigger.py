@@ -57,7 +57,7 @@ def get_db_connection():
 def handler(event, context):
     """
     Lambda handler triggered by a schedule.
-    Resets the email_renewal_flag to 0 for any family whose membership
+    Resets the renewal_email_sent to 0 for any family whose membership
     expires in the current month.
     """
     logger.info("Starting monthly renewal flag reset process...")
@@ -80,7 +80,7 @@ def handler(event, context):
         # SQL query to update the flag for members expiring this month and year.
         sql_query = """
             UPDATE family
-            SET email_renewal_flag = 0
+            SET renewal_email_sent = 0
             WHERE
                 MONTH(membership_expires) = ? AND
                 YEAR(membership_expires) = ?
@@ -90,7 +90,7 @@ def handler(event, context):
         conn.commit()
         
         updated_rows = cursor.rowcount
-        success_message = f"Successfully reset email_renewal_flag for {updated_rows} records expiring in {current_month}/{current_year}."
+        success_message = f"Successfully reset renewal_email_sent for {updated_rows} records expiring in {current_month}/{current_year}."
         logger.info(success_message)
         
         return {

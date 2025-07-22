@@ -346,7 +346,7 @@ def update_record(member_id):
                 data['membership_expires'] = date(expiry_year, expiry_month, last_day)
                 data['email_renewal_flag'] = True
 
-            family_keys = ['address', 'city', 'state', 'zip_code', 'email', 'founding_family', 'mem_start_date', 'membership_expires', 'active_flag', 'email_renewal_flag']
+            family_keys = ['address', 'city', 'state', 'zip_code', 'email', 'founding_family', 'mem_start_date', 'membership_expires', 'active_flag', 'renewal_email_sent']
             family_clauses = [f"{key} = ?" for key in data if key in family_keys]
             family_params = [data[key] for key in data if key in family_keys]
 
@@ -617,12 +617,14 @@ def send_renewal_email_ses(recipient_email, member_name, expiration_date):
     # Try to send the email.
     try:
         response = ses_client.send_email(
+            Source=SENDER,
             Destination={'ToAddresses': [recipient_email]},
             Message={
                 'Body': {'Html': {'Charset': "UTF-8", 'Data': BODY_HTML}},
                 'Subject': {'Charset': "UTF-8", 'Data': SUBJECT},
             },
-            Source=SENDER,
+            # This line is CRITICAL for bounce and complaint handling
+            ConfigurationSetName='nelcm-transactional-config'
         )
     except ClientError as e:
         logging.error(f"Email failed to send to {recipient_email}: {e.response['Error']['Message']}")
