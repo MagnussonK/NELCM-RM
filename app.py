@@ -345,7 +345,7 @@ def update_record(member_id):
                 # Add/overwrite the membership_expires in the data dict
                 data['membership_expires'] = date(expiry_year, expiry_month, last_day)
 
-            family_keys = ['address', 'city', 'state', 'zip_code', 'email', 'founding_family', 'mem_start_date', 'membership_expires', 'active_flag']
+            family_keys = ['address', 'city', 'state', 'zip_code', 'email', 'founding_family', 'mem_start_date', 'membership_expires', 'active_flag', 'email_renewal_flag']
             family_clauses = [f"{key} = ?" for key in data if key in family_keys]
             family_params = [data[key] for key in data if key in family_keys]
 
