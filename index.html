@@ -699,13 +699,13 @@
                             <span id="familyEmail" class="detail-value"></span>
                         </div>
 
-                        <div id="updateMembershipContainer" class="detail-item md:col-span-2">
+                        <div id="updateMembershipContainer" class="detail-item">
                             <span class="detail-label font-bold text-base mb-3 border-b pb-2">Membership Dates:</span>
                             <div class="flex items-end gap-4 pt-2">
                                 <div class="flex-grow space-y-3">
                                     <div>
-                                        <label for="editMemStartDate" class="detail-label text-sm !mb-1">Start Date:</label>
-                                        <input type="date" id="editMemStartDate" class="w-full" disabled>
+                                        <label class="detail-label text-sm !mb-1">Start Date:</label>
+                                        <span id="familyMemStartDateDisplay" class="detail-value block p-2 bg-gray-200 rounded-md w-full text-center font-medium"></span>
                                     </div>
                                     <div>
                                         <label class="detail-label text-sm !mb-1">End Date:</label>
@@ -2036,7 +2036,7 @@ function renderHomeTable(dataToRender) {
         const familyMembershipExpires = document.getElementById('familyMembershipExpires');
         const familyEmail = document.getElementById('familyEmail');
         const updateMembershipContainer = document.getElementById('updateMembershipContainer');
-        const editMemStartDate = document.getElementById('editMemStartDate');
+        const familyMemStartDateDisplay = document.getElementById('familyMemStartDateDisplay');
         const updateMembershipBtn = document.getElementById('updateMembershipBtn');
         const familyDetailsManageSecondaryMembersBtn = document.getElementById('familyDetailsManageSecondaryMembersBtn');
         const familyDetailsCloseBtn = document.getElementById('familyDetailsCloseBtn');
@@ -2083,7 +2083,7 @@ function renderHomeTable(dataToRender) {
                         updateMembershipContainer.style.display = 'none';
                     } else {
                         familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
-                        editMemStartDate.value = formatDateForInput(memStartDateObj);
+                        familyMemStartDateDisplay.textContent = formatDate(memStartDateObj);
                         updateMembershipContainer.style.display = 'block';
                     }
 
