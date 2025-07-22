@@ -7,108 +7,80 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" href="/logo.png" type="image/png">
     <style>
-        /* Global Styles */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        .main-container { max-width: 8xl; }
+        .view-container { width: 100%; }
+        label { display: block; font-weight: 600; color: #4b5563; margin-bottom: 0.5rem; }
+        input[type="text"], input[type="email"], input[type="tel"], input[type="date"], select {
+            width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 0.5rem;
         }
-        .main-container {
-            background-color: #ffffff;
-            padding: 2.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1), 0 4px 8px -2px rgba(0, 0, 0, 0.05);
-            width: 100%;
-            max-width: 6xl;
-            border: 1px solid #e2e8f0;
-            margin-top: 2rem;
-            margin-bottom: 2rem;
-        }
-        .view-container {
-            width: 100%;
-            margin-top: 2rem;
-            margin-bottom: 2rem;
-        }
-        label {
-            display: block;
-            font-weight: 600;
-            color: #4b5563;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
-        input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="datetime-local"], select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #cbd5e0;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-            color: #1f2937;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #5E237C;
-            box-shadow: 0 0 0 3px rgba(94, 35, 124, 0.25);
-        }
-        .action-button {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
+        input:focus, select:focus { outline: none; border-color: #5E237C; box-shadow: 0 0 0 3px rgba(94, 35, 124, 0.25); }
+        .action-button { padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; }
         .btn-primary { background-color: #5E237C; color: white; }
         .btn-primary:hover { background-color: #4A1C63; }
         .btn-secondary { background-color: #99CC33; color: #374151; }
         .btn-secondary:hover { background-color: #7AA329; }
-        .btn-delete { background-color: #ef4444; color: white; }
-        .btn-delete:hover { background-color: #dc2626; }
         .message-box { padding: 0.75rem; margin-bottom: 1.5rem; border-radius: 0.5rem; text-align: center; font-weight: 500; }
         .message-box.success { background-color: #d1fae5; color: #065f46; }
         .message-box.error { background-color: #fee2e2; color: #991b1b; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-        th { background-color: #e2e8f0; color: #4a5568; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
-        tr:hover { background-color: #f7fafc; }
+        th { background-color: #f1f5f9; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+        tbody tr { cursor: pointer; }
+        tbody tr:hover { background-color: #f8fafc; }
         .expired-membership-row { background-color: #fee2e2; }
-        .expiring-soon-row { background-color: #fcd34d; }
-        .founding-family-row { background-color: #dcfce7; }
-        .missing-info-row { border-left: 4px solid #f59e0b; }
+        .expiring-soon-row { background-color: #fef9c3; }
         .section-header { font-size: 1.5rem; font-weight: 700; color: #374151; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 2px solid #e5e7eb; }
         .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
         .detail-item { display: flex; flex-direction: column; padding: 1rem; background-color: #f9fafb; border-radius: 0.5rem; border: 1px solid #e5e7eb; }
         .detail-label { font-weight: 600; color: #4b5563; font-size: 0.875rem; margin-bottom: 0.25rem; }
-        .detail-value { font-size: 1rem; word-break: break-word; }
-        .member-card { background-color: #f3f4f6; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1rem; }
-        .member-card-header { font-size: 1.125rem; font-weight: 600; }
-        
-        /* MODIFIED: Styles for the combined membership box */
-        .membership-dates-box { grid-column: span 2; }
-        .membership-dates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; align-items: end; }
-        .date-field-group { display: flex; flex-direction: column; }
-        .date-field-label { font-weight: 500; color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem; }
-        .detail-value-input { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 0.5rem; }
-        #updateMembershipBtn.w-full { width: 100%; justify-content: center; margin-top: 1rem; }
-
+        .detail-value { font-size: 1rem; }
+        .membership-action-group { display: flex; align-items: flex-end; gap: 1rem; }
     </style>
 </head>
 <body class="p-6">
-    <div class="main-container mx-auto">
+    <div class="main-container mx-auto bg-white p-8 rounded-lg shadow-lg">
         <div class="text-center mb-6">
-            <img src="logo.png" alt="The Childrens Museum Logo" class="mx-auto h-20 sm:h-24 mb-4">
+            <img src="logo.png" alt="The Childrens Museum Logo" class="mx-auto h-24 mb-4">
         </div>
         <div id="messageBox" class="hidden"></div>
-        <div id="globalLoadingIndicator" class="hidden"></div>
+        <div id="globalLoadingIndicator" class="hidden text-center my-8 font-semibold"><p>Processing...</p></div>
 
         <section id="homeView" class="view-container">
-            </section>
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">Member Directory</h1>
+                <div class="flex items-center gap-4">
+                    <input type="text" id="searchInput" placeholder="Search by name, email, or ID..." class="w-72">
+                    <button id="addNewMemberBtn" class="action-button btn-primary">Add New Member</button>
+                    <button id="sendEmailsBtn" class="action-button btn-secondary">Send Renewal Emails</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto bg-white rounded-lg shadow">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Member ID</th>
+                            <th>Primary Member</th>
+                            <th>Email</th>
+                            <th>Membership Start</th>
+                            <th>Membership Expires</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTableBody">
+                        <tr><td colspan="6" class="text-center p-8">Loading data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
         <section id="addRecordView" class="view-container hidden">
-            </section>
+            <h2 class="section-header">Add New Member</h2>
+            <button id="addCancelBtn" class="action-button btn-secondary">Cancel</button>
+        </section>
 
         <section id="familyDetailsView" class="view-container hidden">
-            <h1 class="text-3xl font-extrabold text-center text-gray-900 mb-6">
-                <span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-800 to-indigo-900">
-                    Family Details
-                </span>
-            </h1>
+             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Family Details</h1>
             <div id="familyDetailsContent">
                 <section class="mb-8">
                     <h2 class="section-header">Family Overview (<span id="displayMemberId"></span>)</h2>
@@ -120,24 +92,25 @@
                         <div class="detail-item"><span class="detail-label">Email:</span><span id="familyEmail" class="detail-value"></span></div>
                         <div class="detail-item"><span class="detail-label">Founding Family:</span><span id="familyFoundingFamily" class="detail-value"></span></div>
                         
-                        <div id="updateMembershipContainer" class="detail-item membership-dates-box">
-                            <span class="detail-label">Membership Dates:</span>
-                            <div class="membership-dates-grid">
-                                <div class="date-field-group">
-                                    <label for="editMemStartDate" class="date-field-label">Start Date:</label>
-                                    <input type="date" id="editMemStartDate" class="detail-value-input">
-                                </div>
-                                <div class="date-field-group">
-                                    <label class="date-field-label">End Date:</label>
-                                    <span id="familyMembershipExpires" class="detail-value"></span>
-                                </div>
-                            </div>
-                            <button id="updateMembershipBtn" class="action-button btn-primary w-full">Update Membership</button>
+                        <div class="detail-item">
+                            <span class="detail-label">Membership Start Date:</span>
+                            <span id="familyMemStartDate" class="detail-value"></span>
                         </div>
-                        
+                        <div class="detail-item">
+                            <span class="detail-label">Membership Expires:</span>
+                            <span id="familyMembershipExpires" class="detail-value"></span>
+                        </div>
                         <div class="detail-item">
                             <span class="detail-label">Family Active Status:</span>
                             <span id="familyActiveFlag" class="detail-value"></span>
+                        </div>
+
+                        <div id="updateMembershipContainer" class="detail-item">
+                            <label for="editMemStartDate" class="detail-label">Update Membership Start Date:</label>
+                            <div class="membership-action-group">
+                                <input type="date" id="editMemStartDate" class="detail-value">
+                                <button id="updateMembershipBtn" class="action-button btn-primary text-sm">Update</button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -146,26 +119,26 @@
                     <div id="individualMembersList"></div>
                 </section>
             </div>
-            <div class="action-buttons justify-end">
-                <button id="familyDetailsManageSecondaryMembersBtn" class="action-button btn-primary">Manage Secondary Members</button>
-                <button id="familyDetailsCloseBtn" class="action-button btn-secondary">Close Window</button>
+            <div class="flex justify-end gap-4 mt-8">
+                <button id="familyDetailsCloseBtn" class="action-button btn-primary">Close</button>
             </div>
         </section>
-
-        </div>
+    </div>
 
     <script>
-        // --- Global Variables and Element References ---
+        // --- Global Variables & Config ---
         let allData = [];
         let primaryMemberRecord = null;
         const BASE_API_URL = 'https://fxwl48gnrc.execute-api.us-east-1.amazonaws.com/api';
-        // MODIFIED: Removed familyMemStartDate as it's no longer in the HTML
-        const familyMembershipExpires = document.getElementById('familyMembershipExpires');
-        const editMemStartDate = document.getElementById('editMemStartDate');
-        const updateMembershipContainer = document.getElementById('updateMembershipContainer');
-        // ... all other element references from your file ...
+
+        // --- DOM Element References ---
         const messageBox = document.getElementById('messageBox');
         const globalLoadingIndicator = document.getElementById('globalLoadingIndicator');
+        const searchInput = document.getElementById('searchInput');
+        const recordsTableBody = document.getElementById('recordsTableBody');
+        const addNewMemberBtn = document.getElementById('addNewMemberBtn');
+        const sendEmailsBtn = document.getElementById('sendEmailsBtn');
+        const addCancelBtn = document.getElementById('addCancelBtn');
         const displayMemberId = document.getElementById('displayMemberId');
         const familyAddress = document.getElementById('familyAddress');
         const familyCity = document.getElementById('familyCity');
@@ -173,19 +146,26 @@
         const familyZipCode = document.getElementById('familyZipCode');
         const familyEmail = document.getElementById('familyEmail');
         const familyFoundingFamily = document.getElementById('familyFoundingFamily');
+        const familyMemStartDate = document.getElementById('familyMemStartDate');
+        const familyMembershipExpires = document.getElementById('familyMembershipExpires');
         const familyActiveFlag = document.getElementById('familyActiveFlag');
-        const individualMembersList = document.getElementById('individualMembersList');
+        const updateMembershipContainer = document.getElementById('updateMembershipContainer');
+        const editMemStartDate = document.getElementById('editMemStartDate');
         const updateMembershipBtn = document.getElementById('updateMembershipBtn');
+        const individualMembersList = document.getElementById('individualMembersList');
         const familyDetailsCloseBtn = document.getElementById('familyDetailsCloseBtn');
-        const familyDetailsManageSecondaryMembersBtn = document.getElementById('familyDetailsManageSecondaryMembersBtn');
-
 
         // --- Utility Functions ---
         const showView = (viewId) => {
             document.querySelectorAll('.view-container').forEach(v => v.classList.add('hidden'));
             document.getElementById(viewId).classList.remove('hidden');
         };
-        const showMessage = (message, type) => { /* ... implementation from your file ... */ };
+        const showMessage = (message, type) => {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box ' + (type === 'error' ? 'error' : 'success');
+            messageBox.classList.remove('hidden');
+            setTimeout(() => messageBox.classList.add('hidden'), 5000);
+        };
         const parseDateRobustly = (dateStr) => dateStr ? new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00') : null;
         const formatDate = (dateObj) => dateObj && !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { timeZone: 'UTC', month: '2-digit', day: '2-digit', year: 'numeric' }) : 'N/A';
         const formatDateForInput = (dateObj) => {
@@ -195,48 +175,119 @@
         };
 
         // --- Data Fetching & Rendering ---
-        async function fetchAllData() { /* ... implementation from your file ... */ }
-        function renderHomeTable(dataToRender) { /* ... implementation from your file ... */ }
-        
-        async function renderFamilyDetailsView() {
-            showView('familyDetailsView');
-            // ... (other parts of the function remain the same)
-
-            const familyMembers = allData.filter(member => member.member_id === currentFamilyId);
-            if (familyMembers.length > 0) {
-                primaryMemberRecord = familyMembers.find(m => m.primary_member === true) || familyMembers[0];
-                
-                const memStartDateObj = parseDateRobustly(primaryMemberRecord.mem_start_date);
-                const membershipExpiresObj = parseDateRobustly(primaryMemberRecord.membership_expires);
-
-                displayMemberId.textContent = currentFamilyId;
-                familyAddress.textContent = primaryMemberRecord.address || 'N/A';
-                familyCity.textContent = primaryMemberRecord.city || 'N/A';
-                familyState.textContent = primaryMemberRecord.state || 'N/A';
-                familyZipCode.textContent = primaryMemberRecord.zip_code || 'N/A';
-                familyEmail.textContent = primaryMemberRecord.email || 'N/A';
-                familyFoundingFamily.textContent = primaryMemberRecord.founding_family ? 'Yes' : 'No';
-                familyActiveFlag.textContent = primaryMemberRecord.active_flag ? 'Active' : 'Inactive';
-
-                // MODIFIED: Logic to populate the combined box
-                if (primaryMemberRecord.founding_family) {
-                    familyMembershipExpires.textContent = 'Founding Family';
-                    updateMembershipContainer.style.display = 'none';
-                } else {
-                    editMemStartDate.value = formatDateForInput(memStartDateObj);
-                    familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
-                    updateMembershipContainer.style.display = 'flex';
-                }
-
-                // ... (rest of the function from your file to render individual members)
+        async function fetchAllData() {
+            globalLoadingIndicator.classList.remove('hidden');
+            try {
+                const response = await fetch(`${BASE_API_URL}/data`);
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                allData = await response.json();
+                renderHomeView();
+            } catch (error) {
+                showMessage(`Could not load data: ${error.message}`, "error");
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
             }
+        }
+        function renderHomeView() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const uniqueFamilies = {};
+            allData.forEach(member => { if (member.primary_member) uniqueFamilies[member.member_id] = member; });
+            const filteredData = Object.values(uniqueFamilies).filter(member => {
+                return `${member.name || ''} ${member.last_name || ''}`.toLowerCase().includes(searchTerm) ||
+                       (member.email || '').toLowerCase().includes(searchTerm) ||
+                       (member.member_id || '').toLowerCase().includes(searchTerm);
+            });
+            recordsTableBody.innerHTML = '';
+            filteredData.forEach(member => {
+                const row = recordsTableBody.insertRow();
+                row.className = member.active_flag === false ? 'expired-membership-row' : '';
+                row.innerHTML = `
+                    <td>${member.member_id}</td>
+                    <td>${member.name} ${member.last_name}</td>
+                    <td>${member.email || 'N/A'}</td>
+                    <td>${formatDate(parseDateRobustly(member.mem_start_date))}</td>
+                    <td>${formatDate(parseDateRobustly(member.membership_expires))}</td>
+                    <td>${member.active_flag ? 'Active' : 'Inactive'}</td>
+                `;
+                row.addEventListener('click', () => renderFamilyDetailsView(member.member_id));
+            });
+        }
+        
+        async function renderFamilyDetailsView(familyId) {
+            showView('familyDetailsView');
+            primaryMemberRecord = allData.find(m => m.member_id === familyId && m.primary_member);
+            if (!primaryMemberRecord) {
+                showMessage('Primary member not found.', 'error');
+                return;
+            }
+            const memStartDateObj = parseDateRobustly(primaryMemberRecord.mem_start_date);
+            const membershipExpiresObj = parseDateRobustly(primaryMemberRecord.membership_expires);
+            displayMemberId.textContent = familyId;
+            familyAddress.textContent = primaryMemberRecord.address || 'N/A';
+            familyCity.textContent = primaryMemberRecord.city || 'N/A';
+            familyState.textContent = primaryMemberRecord.state || 'N/A';
+            familyZipCode.textContent = primaryMemberRecord.zip_code || 'N/A';
+            familyEmail.textContent = primaryMemberRecord.email || 'N/A';
+            familyFoundingFamily.textContent = primaryMemberRecord.founding_family ? 'Yes' : 'No';
+            familyActiveFlag.textContent = primaryMemberRecord.active_flag ? 'Active' : 'Inactive';
+            familyMemStartDate.textContent = formatDate(memStartDateObj);
+            editMemStartDate.value = formatDateForInput(memStartDateObj);
+            if (primaryMemberRecord.founding_family) {
+                familyMembershipExpires.textContent = 'Founding Family';
+                updateMembershipContainer.style.display = 'none';
+            } else {
+                familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
+                updateMembershipContainer.style.display = 'flex';
+            }
+            individualMembersList.innerHTML = '';
+            allData.filter(m => m.member_id === familyId).forEach(member => {
+                 const card = document.createElement('div');
+                 card.className = 'member-card';
+                 card.innerHTML = `<div class="member-card-header">${member.name} ${member.last_name} ${member.primary_member ? '(Primary)' : ''}</div>`;
+                 individualMembersList.appendChild(card);
+            });
         }
 
         // --- Event Listeners ---
-        document.addEventListener('DOMContentLoaded', async () => { /* ... implementation from your file ... */ });
-        updateMembershipBtn.addEventListener('click', async () => { /* ... implementation from your file ... */ });
-        // ... all other event listeners from your file ...
-
+        document.addEventListener('DOMContentLoaded', fetchAllData);
+        searchInput.addEventListener('input', renderHomeView);
+        addNewMemberBtn.addEventListener('click', () => showView('addRecordView'));
+        addCancelBtn.addEventListener('click', () => showView('homeView'));
+        familyDetailsCloseBtn.addEventListener('click', () => showView('homeView'));
+        updateMembershipBtn.addEventListener('click', async () => {
+            globalLoadingIndicator.classList.remove('hidden');
+            try {
+                const response = await fetch(`${BASE_API_URL}/update_record/${primaryMemberRecord.member_id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mem_start_date: editMemStartDate.value, is_primary: true })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error);
+                showMessage(result.message, 'success');
+                await fetchAllData();
+                await renderFamilyDetailsView(primaryMemberRecord.member_id);
+            } catch (error) {
+                showMessage(`Update Failed: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+            }
+        });
+        sendEmailsBtn.addEventListener('click', async () => {
+            if (!confirm("Are you sure you want to send renewal emails?")) return;
+            globalLoadingIndicator.classList.remove('hidden');
+            try {
+                const response = await fetch(`${BASE_API_URL}/send_renewal_emails`, { method: 'POST' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error);
+                showMessage(result.message, 'success');
+                await fetchAllData();
+            } catch (error) {
+                showMessage(`Email sending failed: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+            }
+        });
     </script>
 </body>
 </html>
