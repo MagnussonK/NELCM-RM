@@ -250,15 +250,16 @@ def add_record():
         if count > 0:
             return jsonify({"error": f"Generated Member ID '{member_id}' already exists. Please modify the name slightly to create a unique ID."}), 409
 
-        # Insert into members table
+        # --- CORRECTED BLOCK ---
+        # Step 1: Insert into members table (for the primary member)
         cursor.execute("""
-            INSERT INTO family (member_id, address, city, state, zip_code, email, founding_family, mem_start_date, membership_expires, active_flag, email_renewal_flag)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO members (member_id, name, last_name, phone, birthday, gender, primary_member, secondary_member)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, 
         member_id, data.get('name'), data.get('last_name'), data.get('phone'),
-        data.get('birthday'), data.get('gender'), True, False)
+        data.get('birthday'), data.get('gender'), True, False) # This is a primary member
 
-        # Insert into family table
+        # Step 2: Insert into family table
         mem_start_date = date.today()
         
         # Calculate expiry date as end of the month, one year later
@@ -267,19 +268,21 @@ def add_record():
         _, last_day = calendar.monthrange(expiry_year, expiry_month)
         membership_expires = date(expiry_year, expiry_month, last_day)
 
+        # The renewal flag is now correctly initialized to False (0).
         cursor.execute("""
-            INSERT INTO family (member_id, address, city, state, zip_code, email, founding_family, mem_start_date, membership_expires, active_flag)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO family (member_id, address, city, state, zip_code, email, founding_family, mem_start_date, membership_expires, active_flag, renewal_email_sent)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         member_id, data.get('address'), data.get('city'), data.get('state'), data.get('zip_code'),
-        data.get('email'), data.get('founding_family', False), mem_start_date, membership_expires, True)
+        data.get('email'), data.get('founding_family', False), mem_start_date, membership_expires, True, False)
+        # --- END CORRECTION ---
         
         conn.commit()
         return jsonify({"message": "Record added successfully!", "member_id": member_id}), 201
     except pyodbc.Error as ex:
         conn.rollback()
         sqlstate = ex.args[0]
-        logging.error(f"Error adding record: {sqlstate} - {ex}")
+        logging.error(f"Error adding record: {ex} - ({sqlstate})")
         return jsonify({"error": f"Database error: {ex}"}), 500
     finally:
         if cursor:
