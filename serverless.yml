@@ -9,6 +9,7 @@ provider:
   environment:
     LD_LIBRARY_PATH: /var/task/lib
     ODBCSYSINI: /var/task
+    SQS_QUEUE_URL: !Ref RenewalEmailQueue
   ecr:
     images:
       appimage:
@@ -25,6 +26,10 @@ provider:
             - "ses:SendEmail"
             - "ses:SendRawEmail"
           Resource: "*"
+        - Effect: "Allow"
+          Action:
+            - "sqs:SendMessage"
+          Resource: !GetAtt RenewalEmailQueue.Arn
   
   # CORRECTED PLACEMENT: vpc is a direct child of provider
   vpc:
@@ -58,3 +63,21 @@ functions:
         - ses_handler.handler # Point to the new handler
     events:
       - sns: nelcm-ses-events # Subscribe to this SNS topic
+      
+  emailSender:
+    image:
+      name: appimage
+      command:
+        - email_sender.handler # Points to the new handler file
+    events:
+      # This function is triggered by messages on the SQS queue
+      - sqs:
+          arn: !GetAtt RenewalEmailQueue.Arn
+          batchSize: 5 # Process up to 5 emails at a time
+          
+resources:
+  Resources:
+    RenewalEmailQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: renewal-email-queue

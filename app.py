@@ -628,16 +628,25 @@ def send_renewal_email_ses(recipient_email, member_name, expiration_date):
         logging.info(f"Email sent successfully to {recipient_email}! Message ID: {response['MessageId']}")
         return True
 
-# --- MODIFIED: Endpoint now uses the SES function ---
 @app.route('/api/send_renewal_emails', methods=['POST'])
 def send_renewal_emails():
-    """Scans for members whose membership expires in the current month and sends a renewal email via SES."""
+    """
+    Scans for members whose membership expires in the current month 
+    and sends a message to an SQS queue for each one to be processed asynchronously.
+    """
     conn = get_db_connection()
     if conn is None: return jsonify({"error": "Database connection failed"}), 500
     cursor = conn.cursor()
+    
+    # Get the SQS queue URL from the environment variables set in serverless.yml
+    sqs_queue_url = os.environ.get('SQS_QUEUE_URL')
+    if not sqs_queue_url:
+        return jsonify({"error": "SQS_QUEUE_URL environment variable not set."}), 500
+        
+    sqs = boto3.client('sqs')
+    
     try:
         today = date.today()
-        # MODIFIED: Query uses the new renewal_email_sent flag
         query = """
             SELECT f.member_id, f.email, m.name, m.last_name, f.membership_expires
             FROM family as f
@@ -653,26 +662,38 @@ def send_renewal_emails():
         if not expiring_members:
             return jsonify({"message": "No members found requiring a renewal email."}), 200
 
-        sent_count = 0
+        messages_sent = 0
         for member in expiring_members:
             member_id, email, name, last_name, expires = member
             if not email:
-                logging.warning(f"Cannot send renewal email to {name} {last_name} (ID: {member_id}): No email on record.")
+                logging.warning(f"Cannot queue renewal email for {name} {last_name}: No email on record.")
                 continue
+
+            # Create the message body as a JSON string
+            message_body = json.dumps({
+                'member_id': member_id,
+                'email': email,
+                'name': name,
+                'last_name': last_name,
+                'expires': expires.isoformat() # Convert date to string
+            })
             
-            if send_renewal_email_ses(recipient_email=email, member_name=f"{name} {last_name}", expiration_date=expires):
-                # MODIFIED: Update query now sets the flag to 1 (true)
-                update_query = "UPDATE family SET renewal_email_sent = 1 WHERE member_id = ?"
-                cursor.execute(update_query, member_id)
-                sent_count += 1
+            # Send the message to SQS
+            sqs.send_message(
+                QueueUrl=sqs_queue_url,
+                MessageBody=message_body
+            )
+            messages_sent += 1
         
-        conn.commit()
-        message = f"Process complete. Successfully sent {sent_count} renewal emails."
-        return jsonify({"message": message, "sent_count": sent_count}), 200
+        message = f"Process started. Successfully queued {messages_sent} renewal emails for sending."
+        return jsonify({"message": message, "queued_count": messages_sent}), 200
+        
     except pyodbc.Error as ex:
-        conn.rollback()
-        logging.error(f"Database error sending renewal emails: {ex.args[0]} - {ex}")
+        logging.error(f"Database error during queuing of renewal emails: {ex.args[0]} - {ex}")
         return jsonify({"error": f"Database error: {ex}"}), 500
+    except ClientError as e:
+        logging.error(f"SQS error during queuing of renewal emails: {e}")
+        return jsonify({"error": f"SQS error: {e}"}), 500
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
