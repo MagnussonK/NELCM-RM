@@ -43,6 +43,7 @@ functions:
   api:
     image:
       name: appimage
+    timeout: 60 # <-- Add this line to the 'api' function
     events:
       - httpApi:
           path: /api/{proxy+}
