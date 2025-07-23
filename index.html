@@ -1371,7 +1371,7 @@
         
                 // Also fix the variable name in the error message for accurate debugging
                 if (error.message.includes('404')) {
-                    showMessage(`Failed to fetch today's visits: The backend endpoint '${backendApiUrl}' was not found (404). Please ensure your Flask backend has this route correctly defined and is running.`, 'error');
+                    showMessage(`Failed to fetch today's visits: The backend endpoint was not found (404). Please ensure the API URL is correct.`, 'error');
                 } else {
                     showMessage(`Failed to fetch today's visits: ${error.message}. Please check the backend server.`, 'error');
                 }
