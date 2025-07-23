@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 import logging
 import calendar
 import os
+from decimal import Decimal
 
 
 import boto3
@@ -77,7 +78,7 @@ def get_db_connection():
         logging.error(f"DATABASE CONNECTION FAILED: {ex}")
         return None
     
-@@app.route('/api/data', methods=['GET'])
+@app.route('/api/data', methods=['GET'])
 def get_data():
     """
     Fetches all data by joining members and family tables.
@@ -88,8 +89,6 @@ def get_data():
 
     cursor = conn.cursor()
     try:
-        # CORRECTED: Use an explicit SELECT statement with aliases to avoid ambiguity
-        # from the 'SELECT *' with a JOIN. This is more efficient and prevents errors.
         query = """
             SELECT
                 m.member_id, m.name, m.last_name, m.phone, m.birthday, m.gender,
@@ -102,17 +101,38 @@ def get_data():
                 family AS f ON m.member_id = f.member_id
         """
         cursor.execute(query)
-        
-        # This logic is now cleaner as there are no duplicate columns
+
         columns = [column[0] for column in cursor.description]
-        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        
+        fetched_rows = cursor.fetchall()
+
+        # --- CORRECTED BLOCK ---
+        # Manually build the list of dictionaries, converting non-serializable types.
+        rows = []
+        for row in fetched_rows:
+            row_dict = {}
+            for i, col_name in enumerate(columns):
+                value = row[i]
+                if isinstance(value, (datetime, date)):
+                    # Convert date/datetime objects to ISO 8601 string format
+                    row_dict[col_name] = value.isoformat() if value else None
+                elif isinstance(value, Decimal):
+                    # Convert Decimal objects to float
+                    row_dict[col_name] = float(value)
+                else:
+                    row_dict[col_name] = value
+            rows.append(row_dict)
+        # --- END CORRECTION ---
+
         return jsonify(rows)
 
     except pyodbc.Error as ex:
         sqlstate = ex.args[0]
         logging.error(f"Error fetching data: {sqlstate} - {ex}")
         return jsonify({"error": f"Database error: {ex}"}), 500
+    except Exception as e:
+        # Catch any other unexpected errors during processing
+        logging.error(f"An unexpected error occurred in get_data: {e}")
+        return jsonify({"error": "An unexpected server error occurred."}), 500
     finally:
         if cursor:
             cursor.close()
