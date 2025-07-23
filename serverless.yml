@@ -69,6 +69,7 @@ functions:
       name: appimage
       command:
         - email_sender.handler # Points to the new handler file
+    timeout: 60 # 60 seconds
     events:
       # This function is triggered by messages on the SQS queue
       - sqs:
