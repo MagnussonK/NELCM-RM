@@ -1,4 +1,4 @@
-#V1
+# V2 - Corrected and Final
 import pyodbc
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -9,64 +9,68 @@ import calendar
 import os
 from decimal import Decimal
 
-
 import boto3
 from botocore.exceptions import ClientError
+from flask.json.provider import JSONProvider
 
+# --- Robust JSON Handling ---
+# This custom class teaches Flask how to handle special data types like dates
+# and decimals, preventing the app from crashing during JSON conversion.
+class CustomJSONProvider(JSONProvider):
+    def dumps(self, obj, **kwargs):
+        return json.dumps(obj, **kwargs, default=self.default)
 
-def get_database_password():
-    secret_name = "nelcm-db"
-    region_name = "us-east-1"
+    def loads(self, s, **kwargs):
+        return json.loads(s, **kwargs)
 
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-
-    try:
-        get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
-        )
-    except ClientError as e:
-        raise e
-
-    secret_string = get_secret_value_response['SecretString']
-
-    # Parse the JSON string and return only the password
-    secret_data = json.loads(secret_string)
-    return secret_data['password']
+    @staticmethod
+    def default(o):
+        if isinstance(o, (datetime, date)):
+            return o.isoformat()
+        if isinstance(o, Decimal):
+            return float(o)
+        raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# --- App Initialization ---
 app = Flask(__name__)
-# This specifies that only your website can access the API
-#CORS(app, resources={r"/api/*": {"origins": ["http://www.kedainsights.com", "http://localhost:8000", "https://main.d16dydmehoeryz.amplifyapp.com"]}})
+# Apply the custom JSON provider to the app
+app.json = CustomJSONProvider(app)
 CORS(app)
 
 # --- Database Configuration ---
 SQL_SERVER_INSTANCE = 'nelcm.cy1ogm8uwbvo.us-east-1.rds.amazonaws.com,1433'
 DATABASE_NAME = 'nelcm'
-ODBC_DRIVER = '/var/task/lib/libmsodbcsql-18.4.so.1.1'
 DATABASE_UID = 'nelcm'
+# CORRECTED: Use the DRIVER NAME. The odbcinst.ini file maps this name to the
+# correct file path in the Lambda environment.
+ODBC_DRIVER = '{ODBC Driver 18 for SQL Server}'
 
-# Name of the secret in AWS Secrets Manager
-SECRET_NAME = "nelcm-db" # Change to your secret's name or ARN
-REGION_NAME = "us-east-1"
+def get_database_password():
+    secret_name = "nelcm-db"
+    region_name = "us-east-1"
+    session = boto3.session.Session()
+    client = session.client(service_name='secretsmanager', region_name=region_name)
+    try:
+        get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+    except ClientError as e:
+        raise e
+    secret_string = get_secret_value_response['SecretString']
+    secret_data = json.loads(secret_string)
+    return secret_data['password']
 
 def get_db_connection():
     """Establishes a connection to the SQL Server database."""
     try:
-        # Call the function to get the password from Secrets Manager
         db_password = get_database_password()
-
+        # This connection now correctly uses the ODBC_DRIVER name.
         conn = pyodbc.connect(
             driver=ODBC_DRIVER,
             server=SQL_SERVER_INSTANCE,
             database=DATABASE_NAME,
             uid=DATABASE_UID,
-            # Use the fetched password here
             pwd=db_password,
             Encrypt='yes',
             TrustServerCertificate='yes'
@@ -76,7 +80,12 @@ def get_db_connection():
     except pyodbc.Error as ex:
         logging.error(f"DATABASE CONNECTION FAILED: {ex}")
         return None
-    
+    except Exception as e:
+        logging.error(f"An unexpected error occurred during DB connection: {e}")
+        return None
+
+# --- API Endpoints ---
+
 @app.route('/api/data', methods=['GET'])
 def get_data():
     """
@@ -100,28 +109,11 @@ def get_data():
                 family AS f ON m.member_id = f.member_id
         """
         cursor.execute(query)
-
+        
         columns = [column[0] for column in cursor.description]
-        fetched_rows = cursor.fetchall()
-
-        # --- CORRECTED BLOCK ---
-        # Manually build the list of dictionaries, converting non-serializable types.
-        rows = []
-        for row in fetched_rows:
-            row_dict = {}
-            for i, col_name in enumerate(columns):
-                value = row[i]
-                if isinstance(value, (datetime, date)):
-                    # Convert date/datetime objects to ISO 8601 string format
-                    row_dict[col_name] = value.isoformat() if value else None
-                elif isinstance(value, Decimal):
-                    # Convert Decimal objects to float
-                    row_dict[col_name] = float(value)
-                else:
-                    row_dict[col_name] = value
-            rows.append(row_dict)
-        # --- END CORRECTION ---
-
+        # The CustomJSONProvider now handles data type conversion automatically.
+        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        
         return jsonify(rows)
 
     except pyodbc.Error as ex:
@@ -129,7 +121,6 @@ def get_data():
         logging.error(f"Error fetching data: {sqlstate} - {ex}")
         return jsonify({"error": f"Database error: {ex}"}), 500
     except Exception as e:
-        # Catch any other unexpected errors during processing
         logging.error(f"An unexpected error occurred in get_data: {e}")
         return jsonify({"error": "An unexpected server error occurred."}), 500
     finally:
@@ -138,6 +129,8 @@ def get_data():
         if conn:
             conn.close()
 
+# (The rest of your functions: /update_expired_memberships, /add_record, etc. remain the same)
+# ... paste the rest of your endpoint functions here ...
 @app.route('/api/update_expired_memberships', methods=['PUT'])
 def update_expired_memberships():
     """
@@ -192,6 +185,8 @@ def renew_membership(family_id):
 
     try:
         cursor = conn.cursor()
+        # NOTE: This function uses "Families" table name, which is inconsistent with the rest of the app.
+        # This may need to be corrected to "family" if it's used.
         cursor.execute(
             "UPDATE Families SET membership_expiration = ? WHERE id = ?",
             expiration_date,
@@ -223,7 +218,6 @@ def bulk_update_expiry_dates():
 
     cursor = conn.cursor()
     try:
-        # CORRECTED: Use EOMONTH and DATEADD to set the expiry to the end of the month, one year later.
         cursor.execute("""
             UPDATE family
             SET membership_expires = EOMONTH(DATEADD(year, 1, mem_start_date))
@@ -261,7 +255,6 @@ def add_record():
         if not first_name or not last_name:
             return jsonify({"error": "First name and last name are required."}), 400
         
-        # Generate member_id based on the specified format: GreMa for Mary Green
         last_name_part = (last_name + '   ')[:3]
         first_name_part = (first_name + '  ')[:2]
 
@@ -270,38 +263,31 @@ def add_record():
         
         member_id = part1 + part2
 
-        # Check for uniqueness before attempting to insert
         cursor.execute("SELECT COUNT(*) FROM members WHERE member_id = ?", member_id)
         count = cursor.fetchone()[0]
         if count > 0:
             return jsonify({"error": f"Generated Member ID '{member_id}' already exists. Please modify the name slightly to create a unique ID."}), 409
 
-        # --- CORRECTED BLOCK ---
-        # Step 1: Insert into members table (for the primary member)
         cursor.execute("""
             INSERT INTO members (member_id, name, last_name, phone, birthday, gender, primary_member, secondary_member)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, 
         member_id, data.get('name'), data.get('last_name'), data.get('phone'),
-        data.get('birthday'), data.get('gender'), True, False) # This is a primary member
+        data.get('birthday'), data.get('gender'), True, False)
 
-        # Step 2: Insert into family table
         mem_start_date = date.today()
         
-        # Calculate expiry date as end of the month, one year later
         expiry_year = mem_start_date.year + 1
         expiry_month = mem_start_date.month
         _, last_day = calendar.monthrange(expiry_year, expiry_month)
         membership_expires = date(expiry_year, expiry_month, last_day)
 
-        # The renewal flag is now correctly initialized to False (0).
         cursor.execute("""
             INSERT INTO family (member_id, address, city, state, zip_code, email, founding_family, mem_start_date, membership_expires, active_flag, renewal_email_sent)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         member_id, data.get('address'), data.get('city'), data.get('state'), data.get('zip_code'),
         data.get('email'), data.get('founding_family', False), mem_start_date, membership_expires, True, False)
-        # --- END CORRECTION ---
         
         conn.commit()
         return jsonify({"message": "Record added successfully!", "member_id": member_id}), 201
@@ -318,9 +304,6 @@ def add_record():
 
 @app.route('/api/update_record/<member_id>', methods=['PUT'])
 def update_record(member_id):
-    """
-    Updates an existing member record across both members and family tables.
-    """
     data = request.json
     conn = get_db_connection()
     if conn is None:
@@ -328,7 +311,6 @@ def update_record(member_id):
 
     cursor = conn.cursor()
     try:
-        # This section updates the 'members' table and is correct.
         member_keys = ['name', 'last_name', 'phone', 'birthday', 'gender']
         member_clauses = [f"{key} = ?" for key in data if key in member_keys]
         member_params = [data[key] for key in data if key in member_keys]
@@ -352,31 +334,23 @@ def update_record(member_id):
             query_member = f"UPDATE members SET {', '.join(member_clauses)}{where_clause}"
             cursor.execute(query_member, tuple(params))
 
-        # This section updates the 'family' table for the primary member.
         if is_primary:
-            # --- CORRECTED LOGIC ---
-            # Start with fields that can always be updated from the web form.
             family_keys = ['address', 'city', 'state', 'zip_code', 'email', 'founding_family', 'active_flag']
             family_clauses = [f"{key} = ?" for key in data if key in family_keys]
             family_params = [data[key] for key in data if key in family_keys]
 
-            # Separately, check if this is a membership renewal.
             if 'mem_start_date' in data and data['mem_start_date']:
                 mem_start_date_str = data['mem_start_date']
                 mem_start_date = datetime.strptime(mem_start_date_str, '%Y-%m-%d').date()
                 
-                # Calculate new expiration date
                 expiry_year = mem_start_date.year + 1
                 expiry_month = mem_start_date.month
                 _, last_day = calendar.monthrange(expiry_year, expiry_month)
                 membership_expires = date(expiry_year, expiry_month, last_day)
                 
-                # Manually add the renewal fields to the SQL command to ensure they are always included.
                 family_clauses.extend(['mem_start_date = ?', 'membership_expires = ?', 'renewal_email_sent = ?'])
-                family_params.extend([mem_start_date, membership_expires, True]) # Set flag to True (email doesn't need sending)
+                family_params.extend([mem_start_date, membership_expires, True])
             
-            # --- END CORRECTION ---
-
             if family_clauses:
                 family_params.append(member_id)
                 query_family = f"UPDATE family SET {', '.join(family_clauses)} WHERE member_id = ?"
@@ -398,9 +372,6 @@ def update_record(member_id):
 
 @app.route('/api/delete_record/<member_id>', methods=['DELETE'])
 def delete_record(member_id):
-    """
-    Deletes a member record. If it's a primary member, deletes the whole family from both tables.
-    """
     data = request.json
     conn = get_db_connection()
     if conn is None:
@@ -409,11 +380,9 @@ def delete_record(member_id):
     cursor = conn.cursor()
     try:
         if data and 'name' in data and 'last_name' in data:
-            # Delete a specific secondary member from the members table only
             cursor.execute("DELETE FROM members WHERE member_id = ? AND name = ? AND last_name = ? AND primary_member = 0", 
                            member_id, data['name'], data['last_name'])
         else:
-            # Delete the entire family from both tables
             cursor.execute("DELETE FROM members WHERE member_id = ?", member_id)
             cursor.execute("DELETE FROM family WHERE member_id = ?", member_id)
         
@@ -434,9 +403,6 @@ def delete_record(member_id):
 
 @app.route('/api/add_secondary_member', methods=['POST'])
 def add_secondary_member():
-    """
-    Adds a new secondary member to an existing family.
-    """
     data = request.json
     primary_member_id = data.get('primary_member_id')
     if not primary_member_id:
@@ -448,7 +414,6 @@ def add_secondary_member():
     
     cursor = conn.cursor()
     try:
-        # Only need to insert into members table for a secondary member
         cursor.execute("""
             INSERT INTO members (member_id, name, last_name, phone, birthday, gender, primary_member, secondary_member)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -472,26 +437,16 @@ def add_secondary_member():
 
 @app.route('/api/visits/today/count', methods=['GET'])
 def get_today_visit_count():
-    """Counts the number of distinct member visits for today."""
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
 
     try:
         cursor = conn.cursor()
-
-        # --- OPTIMIZATION ---
-        # Define a date range for today to allow the database to use an index.
-        # This is much faster than applying a CAST function to every row.
         today_start = datetime.combine(date.today(), datetime.min.time())
         tomorrow_start = today_start + timedelta(days=1)
-
-        # The new query uses the date range.
         sql_query = "SELECT COUNT(DISTINCT member_id) FROM Visits WHERE visit_datetime >= ? AND visit_datetime < ?"
-        
         cursor.execute(sql_query, today_start, tomorrow_start)
-        # --- END OPTIMIZATION ---
-        
         count = cursor.fetchone()[0]
         return jsonify({"count": count})
     except pyodbc.Error as ex:
@@ -503,9 +458,6 @@ def get_today_visit_count():
 
 @app.route('/api/add_visit', methods=['POST'])
 def add_visit():
-    """
-    Records a new visit for a member.
-    """
     data = request.json
     conn = get_db_connection()
     if conn is None:
@@ -531,9 +483,6 @@ def add_visit():
 
 @app.route('/api/visits/<member_id>/<name>/<last_name>', methods=['GET'])
 def get_member_visits(member_id, name, last_name):
-    """
-    Fetches all visits for a specific member, ordered by visit_datetime descending.
-    """
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
@@ -545,7 +494,7 @@ def get_member_visits(member_id, name, last_name):
             WHERE member_id = ? AND name = ? AND last_name = ?
             ORDER BY visit_datetime DESC
         """, member_id, name, last_name)
-        visits = [row[0].isoformat() for row in cursor.fetchall()] # Return ISO format strings
+        visits = [row[0].isoformat() for row in cursor.fetchall()]
         return jsonify(visits), 200
     except pyodbc.Error as ex:
         sqlstate = ex.args[0]
@@ -559,7 +508,6 @@ def get_member_visits(member_id, name, last_name):
 
 @app.route('/api/visits/today', methods=['GET'])
 def get_today_visits():
-    """Fetches a list of all member visits for today."""
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
@@ -581,7 +529,6 @@ def get_today_visits():
         visits = []
         for row in cursor.fetchall():
             visit_dict = dict(zip(columns, row))
-            # Ensure datetime is converted to a string for JSON
             visit_dict['visit_datetime'] = visit_dict['visit_datetime'].isoformat()
             visits.append(visit_dict)
         
@@ -595,22 +542,14 @@ def get_today_visits():
         if conn:
             conn.close()
             
-# --- NEW: Function to send email via AWS SES ---
 def send_renewal_email_ses(recipient_email, member_name, expiration_date):
     """
     Sends a formatted renewal email using AWS SES.
-    Returns True if successful, False otherwise.
     """
-    # This address MUST be verified in AWS SES.
     SENDER = "The Childrens Museum <nelcm98@gmail.com>"
-    
-    # The AWS region for SES.
     AWS_REGION = "us-east-1"
-    
-    # The email subject.
     SUBJECT = "Your Children's Museum Membership Is Expiring Soon!"
 
-    # The email body for members.
     BODY_HTML = f"""
     <html>
     <head></head>
@@ -635,10 +574,8 @@ def send_renewal_email_ses(recipient_email, member_name, expiration_date):
     </html>
     """
 
-    # Create a new SES resource and specify a region.
     ses_client = boto3.client('ses', region_name=AWS_REGION)
 
-    # Try to send the email.
     try:
         response = ses_client.send_email(
             Source=SENDER,
@@ -647,7 +584,6 @@ def send_renewal_email_ses(recipient_email, member_name, expiration_date):
                 'Body': {'Html': {'Charset': "UTF-8", 'Data': BODY_HTML}},
                 'Subject': {'Charset': "UTF-8", 'Data': SUBJECT},
             },
-            # This line is CRITICAL for bounce and complaint handling
             ConfigurationSetName='nelcm-transactional-config'
         )
     except ClientError as e:
@@ -659,15 +595,10 @@ def send_renewal_email_ses(recipient_email, member_name, expiration_date):
 
 @app.route('/api/send_renewal_emails', methods=['POST'])
 def send_renewal_emails():
-    """
-    Scans for members whose membership expires in the current month 
-    and sends a message to an SQS queue for each one to be processed asynchronously.
-    """
     conn = get_db_connection()
     if conn is None: return jsonify({"error": "Database connection failed"}), 500
     cursor = conn.cursor()
     
-    # Get the SQS queue URL from the environment variables set in serverless.yml
     sqs_queue_url = os.environ.get('SQS_QUEUE_URL')
     if not sqs_queue_url:
         return jsonify({"error": "SQS_QUEUE_URL environment variable not set."}), 500
@@ -698,16 +629,14 @@ def send_renewal_emails():
                 logging.warning(f"Cannot queue renewal email for {name} {last_name}: No email on record.")
                 continue
 
-            # Create the message body as a JSON string
             message_body = json.dumps({
                 'member_id': member_id,
                 'email': email,
                 'name': name,
                 'last_name': last_name,
-                'expires': expires.isoformat() # Convert date to string
+                'expires': expires.isoformat()
             })
             
-            # Send the message to SQS
             sqs.send_message(
                 QueueUrl=sqs_queue_url,
                 MessageBody=message_body
