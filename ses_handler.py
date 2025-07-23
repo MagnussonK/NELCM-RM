@@ -31,7 +31,8 @@ def get_db_connection():
     try:
         db_password = get_database_password()
         conn = pyodbc.connect(
-            driver='/var/task/lib/libmsodbcsql-18.4.so.1.1',
+            #driver='/var/task/lib/libmsodbcsql-18.4.so.1.1',
+            driver = '{ODBC Driver 18 for SQL Server}'
             server='nelcm.cy1ogm8uwbvo.us-east-1.rds.amazonaws.com,1433',
             database='nelcm',
             uid='nelcm',
