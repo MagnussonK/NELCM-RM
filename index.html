@@ -1652,27 +1652,34 @@ function renderHomeTable(dataToRender) {
         /**
          * Fetches all necessary data from the backend to initialize the application.
          */
-        async function fetchAllData() {
+		async function fetchAllData() {
             globalLoadingIndicator.classList.remove('hidden');
             homeFetchDataBtn.disabled = true;
             homeRefreshSpinner.classList.remove('hidden');
         
-            // You define the URL here
             try {
-                // You MUST use the same variable name here
                 const response = await fetch(`${BASE_API_URL}/data`);
         
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                    let errorDetails = 'The server returned an error response.';
+                    try {
+                        // Safely attempt to parse the error response as JSON
+                        const errorData = await response.json();
+                        errorDetails = errorData.error || JSON.stringify(errorData);
+                    } catch (jsonError) {
+                        // If the response wasn't JSON, use the status text as a fallback
+                        errorDetails = response.statusText || 'Could not parse error response.';
+                    }
+                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorDetails}`);
                 }
+
                 allData = await response.json();
                 updateCounts(allData);
                 filterHomeData();
                 fetchVisitsTodayCount();
                 showMessage('Data fetched successfully!', 'success');
-            }
-            catch (error) {
+
+            } catch (error) {
                 console.error('Error fetching data:', error);
                 showMessage(`Failed to fetch data: ${error.message}`, 'error');
                 homeDataResultsDiv.innerHTML = '<p class="text-center text-gray-500 py-4">Could not load data. Check console for details.</p>';
