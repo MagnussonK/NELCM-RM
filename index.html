@@ -1929,7 +1929,7 @@ function renderHomeTable(dataToRender) {
         addNameInput.addEventListener('input', updateAddRecordHeaderWithMemberId);
         addLastNameInput.addEventListener('input', updateAddRecordHeaderWithMemberId);
 
-        addRecordForm.addEventListener('submit', async (event) => {
+		addRecordForm.addEventListener('submit', async (event) => {
             event.preventDefault();
 
             globalLoadingIndicator.classList.remove('hidden');
@@ -1979,7 +1979,7 @@ function renderHomeTable(dataToRender) {
                 primary_member: primaryMember,
                 secondary_member: secondaryMember
             };
-            const backendApiUrl = '${BaseApiUrl}/add_record';
+            
             try {
 					const response = await fetch(`${BASE_API_URL}/add_record`, {
                     method: 'POST',
@@ -1994,15 +1994,24 @@ function renderHomeTable(dataToRender) {
                 }
 
                 const result = await response.json();
-                console.log('Primary Member Add Result:', result);
                 showMessage(result.message || 'Record added successfully!', 'success');
                 
+                // --- MODIFIED WORKFLOW ---
+                // Set the current family ID from the response
                 currentFamilyId = result.member_id;
+                
+                // Refresh the master data list in the background
+                await fetchAllData();
+
+                // Reset the form for the next time it's used
                 resetAddRecordForm();
 
-                addFamilyMembersBtn.classList.remove('hidden');
-
-                await fetchAllData();
+                // Switch to the family details view
+                showView('familyDetailsView');
+                
+                // Render the details for the newly created family
+                await renderFamilyDetailsView();
+                // --- END MODIFICATION ---
 
             } catch (error) {
                 console.error('Error adding record:', error);
@@ -2012,7 +2021,7 @@ function renderHomeTable(dataToRender) {
                 addRecordForm.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
             }
         });
-
+		
         addFamilyMembersBtn.addEventListener('click', () => {
             if (currentFamilyId) {
                 showView('manageSecondaryMembersView');
