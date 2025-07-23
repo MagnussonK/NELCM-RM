@@ -77,7 +77,7 @@ def get_db_connection():
         logging.error(f"DATABASE CONNECTION FAILED: {ex}")
         return None
     
-@app.route('/api/data', methods=['GET'])
+@@app.route('/api/data', methods=['GET'])
 def get_data():
     """
     Fetches all data by joining members and family tables.
@@ -88,20 +88,27 @@ def get_data():
 
     cursor = conn.cursor()
     try:
-        # Use LEFT JOIN to get all members and their corresponding family info
-        cursor.execute("SELECT * FROM members LEFT JOIN family ON members.member_id = family.member_id")
-        # Handling potential duplicate column names (like member_id)
+        # CORRECTED: Use an explicit SELECT statement with aliases to avoid ambiguity
+        # from the 'SELECT *' with a JOIN. This is more efficient and prevents errors.
+        query = """
+            SELECT
+                m.member_id, m.name, m.last_name, m.phone, m.birthday, m.gender,
+                m.primary_member, m.secondary_member,
+                f.address, f.city, f.state, f.zip_code, f.email, f.founding_family,
+                f.mem_start_date, f.membership_expires, f.active_flag, f.renewal_email_sent
+            FROM
+                members AS m
+            LEFT JOIN
+                family AS f ON m.member_id = f.member_id
+        """
+        cursor.execute(query)
+        
+        # This logic is now cleaner as there are no duplicate columns
         columns = [column[0] for column in cursor.description]
-        rows = []
-        for row in cursor.fetchall():
-            row_dict = {}
-            for i, col in enumerate(columns):
-                # If a column name is already in the dict, it's likely a duplicate from the join.
-                # We can decide which one to keep, here we just overwrite, which is usually fine
-                # if the joined keys are identical.
-                row_dict[col] = row[i]
-            rows.append(row_dict)
+        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        
         return jsonify(rows)
+
     except pyodbc.Error as ex:
         sqlstate = ex.args[0]
         logging.error(f"Error fetching data: {sqlstate} - {ex}")
