@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**.py'
+      - 'requirements.txt'
+      - 'serverless.yml'
+      - 'Dockerfile'
+      - '.github/workflows/deploy-backend.yml'
+      - 'odbcinst.ini'
 
 jobs:
   deploy-backend:
