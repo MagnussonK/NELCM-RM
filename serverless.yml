@@ -28,11 +28,8 @@ provider:
             - "ses:SendEmail"
             - "ses:SendRawEmail"
           Resource: "*"
-        - Effect: "Allow"
-          Action:
-            - "sqs:SendMessage"
-          Resource: !GetAtt RenewalEmailQueue.Arn
-  
+        # --- REMOVE THE SQS PERMISSION FROM HERE ---
+
   vpc:
     securityGroupIds:
       - sg-0538cfedbe5d23eb5
@@ -75,5 +72,18 @@ functions:
       - sqs:
           arn: !GetAtt RenewalEmailQueue.Arn
           batchSize: 5
+    # --- ADD THE SPECIFIC PERMISSION AND DEPENDSON HERE ---
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "sqs:SendMessage"
+        Resource: !GetAtt RenewalEmailQueue.Arn
     dependsOn:
       - RenewalEmailQueue
+
+resources:
+  Resources:
+    RenewalEmailQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-renewal-email-queue
