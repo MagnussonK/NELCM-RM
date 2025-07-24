@@ -5,6 +5,9 @@ provider:
   runtime: python3.9
   region: us-east-1
   architecture: x86_64
+  # Assign the explicitly defined role to all functions
+  iam:
+    role: IamRoleLambdaExecution
   httpApi:
     cors: true
   environment:
@@ -16,20 +19,6 @@ provider:
       appimage:
         path: ./
         platform: linux/amd64
-  iam:
-    role:
-      statements:
-        - Effect: "Allow"
-          Action:
-            - "secretsmanager:GetSecretValue"
-          Resource: "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
-        - Effect: "Allow"
-          Action:
-            - "ses:SendEmail"
-            - "ses:SendRawEmail"
-          Resource: "*"
-        # --- REMOVE THE SQS PERMISSION FROM HERE ---
-
   vpc:
     securityGroupIds:
       - sg-0538cfedbe5d23eb5
@@ -72,18 +61,52 @@ functions:
       - sqs:
           arn: !GetAtt RenewalEmailQueue.Arn
           batchSize: 5
-    # --- ADD THE SPECIFIC PERMISSION AND DEPENDSON HERE ---
-    iamRoleStatements:
-      - Effect: "Allow"
-        Action:
-          - "sqs:SendMessage"
-        Resource: !GetAtt RenewalEmailQueue.Arn
-    dependsOn:
-      - RenewalEmailQueue
 
 resources:
   Resources:
+    # --- 1. Define the SQS Queue First ---
     RenewalEmailQueue:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:service}-${sls:stage}-renewal-email-queue
+
+    # --- 2. Explicitly Define the IAM Role and its Permissions ---
+    IamRoleLambdaExecution:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:service}-${sls:stage}-lambda-role
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        # This role needs basic permissions to run in a VPC and write logs
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        Policies:
+          - PolicyName: ${self:service}-${sls:stage}-lambda-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - "secretsmanager:GetSecretValue"
+                  Resource: "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
+                - Effect: Allow
+                  Action:
+                    - "ses:SendEmail"
+                    - "ses:SendRawEmail"
+                  Resource: "*"
+                - Effect: Allow
+                  Action:
+                    - "sqs:SendMessage"
+                    - "sqs:ReceiveMessage" # emailSender needs this permission too
+                    - "sqs:DeleteMessage"
+                    - "sqs:GetQueueAttributes"
+                  Resource: !GetAtt RenewalEmailQueue.Arn
+      # --- 3. Make the Role explicitly depend on the Queue ---
+      DependsOn:
+        - RenewalEmailQueue
