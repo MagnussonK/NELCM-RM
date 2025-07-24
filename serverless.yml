@@ -75,3 +75,5 @@ functions:
       - sqs:
           arn: !GetAtt RenewalEmailQueue.Arn
           batchSize: 5
+    dependsOn:
+      - RenewalEmailQueue
