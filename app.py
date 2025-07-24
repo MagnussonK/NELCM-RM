@@ -47,6 +47,7 @@ DATABASE_UID = 'nelcm'
 
 
 def get_database_password():
+    """Retrieves the database password from AWS Secrets Manager."""
     secret_name = "nelcm-db"
     region_name = "us-east-1"
     session = boto3.session.Session()
@@ -54,7 +55,10 @@ def get_database_password():
     try:
         get_secret_value_response = client.get_secret_value(SecretId=secret_name)
     except ClientError as e:
-        raise e
+        # Log the actual error from AWS
+        logging.error(f"Failed to retrieve secret '{secret_name}': {e}")
+        # Return None instead of crashing
+        return None
     secret_string = get_secret_value_response['SecretString']
     secret_data = json.loads(secret_string)
     return secret_data['password']
@@ -63,7 +67,12 @@ def get_db_connection():
     """Establishes a connection to the SQL Server database."""
     try:
         db_password = get_database_password()
-        # This connection now correctly uses the ODBC_DRIVER name.
+        # If the password could not be retrieved, stop here.
+        if db_password is None:
+            logging.error("Database password could not be retrieved. Aborting connection.")
+            return None
+
+        # This connection now uses the direct path to the driver library for consistency.
         conn = pyodbc.connect(
             driver='/var/task/lib/libmsodbcsql-18.4.so.1.1',
             server=SQL_SERVER_INSTANCE,
