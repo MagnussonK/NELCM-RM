@@ -1,21 +1,13 @@
-name: Deploy Backend to AWS Lambda via Container
+name: Deploy Serverless Backend
 
 on:
   push:
     branches:
       - main
-    paths:
-      - '**.py'
-      - 'requirements.txt'
-      - 'serverless.yml'
-      - 'Dockerfile'
-      - '.github/workflows/deploy-backend.yml'
-      - 'odbcinst.ini'
 
 jobs:
   deploy-backend:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -28,7 +20,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Log in to Amazon ECR
-        id: login-ecr # Give the step an ID to reference its output
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Node.js
@@ -40,13 +32,15 @@ jobs:
         run: npm install -g serverless@^3
 
       - name: Build, tag, and push image to Amazon ECR
+        id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: nelcm-record-manager
+          ECR_REPOSITORY: nelcm-record-manager-backend # Match the service name in serverless.yml
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Deploy with Serverless Framework
-        run: serverless deploy
+        run: serverless deploy --param="image=${{ steps.build-image.outputs.image }}"

@@ -33,7 +33,6 @@ provider:
             - "sqs:SendMessage"
           Resource: !GetAtt RenewalEmailQueue.Arn
   
-  # CORRECTED PLACEMENT: vpc is a direct child of provider
   vpc:
     securityGroupIds:
       - sg-0538cfedbe5d23eb5
@@ -43,46 +42,36 @@ provider:
 
 functions:
   api:
-    image:
-      name: appimage
+    image: ${param:image}
     timeout: 15
     events:
       - httpApi:
           path: /api/{proxy+}
           method: any
-          
+
   renewalEmailTrigger:
     image:
-      name: appimage # Reuse the same ECR image
+      uri: ${param:image}
       command:
-        - renewal_trigger.handler # Correctly override the Docker CMD for this function
+        - renewal_trigger.handler
     events:
-      - schedule: cron(0 12 1 * ? *) # Runs at 12:00 PM UTC on the 1st day of every month
-      
+      - schedule: cron(0 12 1 * ? *)
+
   sesHandler:
     image:
-      name: appimage # Reuse the same ECR image
+      uri: ${param:image}
       command:
-        - ses_handler.handler # Point to the new handler
+        - ses_handler.handler
     events:
-      - sns: nelcm-ses-events # Subscribe to this SNS topic
-      
+      - sns: nelcm-ses-events
+
   emailSender:
     image:
-      name: appimage
+      uri: ${param:image}
       command:
-        - email_sender.handler # Points to the new handler file
+        - email_sender.handler
     timeout: 15
     events:
-      # This function is triggered by messages on the SQS queue
       - sqs:
           arn: !GetAtt RenewalEmailQueue.Arn
-          batchSize: 5 # Process up to 5 emails at a time
-          
-resources:
-  Resources:
-    RenewalEmailQueue:
-      Type: AWS::SQS::Queue
-      Properties:
-        # Create a unique queue name based on the service and stage
-        QueueName: ${self:service}-${sls:stage}-renewal-email-queue
+          batchSize: 5
