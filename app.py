@@ -112,7 +112,7 @@ def get_data():
                 f.mem_start_date, f.membership_expires, f.active_flag, f.renewal_email_sent
             FROM
                 members AS m
-            LEFT JOIN
+            JOIN
                 family AS f ON m.member_id = f.member_id
         """
         cursor.execute(query)
