@@ -30,7 +30,7 @@ provider:
 functions:
   api:
     image: appimage
-    timeout: 15
+    timeout: 5
     events:
       - httpApi:
           path: /api/{proxy+}
@@ -57,7 +57,7 @@ functions:
       name: appimage
       command:
         - email_sender.handler
-    timeout: 15
+    timeout: 5
     events:
       - sqs:
           arn: !GetAtt RenewalEmailQueue.Arn
