@@ -22,6 +22,7 @@ provider:
   vpc:
     securityGroupIds:
       - sg-0538cfedbe5d23eb5
+
     subnetIds:
       - subnet-06ca61fce5f705db2
       - subnet-01ae22cae3a9c51f5
