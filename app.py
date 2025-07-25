@@ -81,7 +81,7 @@ def get_db_connection():
             database=DATABASE_NAME,
             uid=DATABASE_UID,
             pwd=db_password,
-            Encrypt='no',
+            Encrypt='yes',
             TrustServerCertificate='yes'
         )
         logging.info("Database connection established successfully.")
