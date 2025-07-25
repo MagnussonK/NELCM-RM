@@ -194,10 +194,8 @@ def renew_membership(family_id):
 
     try:
         cursor = conn.cursor()
-        # NOTE: This function uses "Families" table name, which is inconsistent with the rest of the app.
-        # This may need to be corrected to "family" if it's used.
         cursor.execute(
-            "UPDATE Families SET membership_expiration = ? WHERE id = ?",
+            "UPDATE family SET membership_expires = ? WHERE member_id = ?",
             expiration_date,
             family_id
         )
