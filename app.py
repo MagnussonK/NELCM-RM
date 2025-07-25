@@ -44,8 +44,8 @@ CORS(app)
 SQL_SERVER_INSTANCE = 'nelcm.cy1ogm8uwbvo.us-east-1.rds.amazonaws.com,1433'
 DATABASE_NAME = 'nelcm'
 DATABASE_UID = 'nelcm'
-ODBC_DRIVER = '{ODBC Driver 18 for SQL Server}'
-#ODBC_DRIVER = '/var/task/lib/libmsodbcsql-18.4.so.1.1'
+#ODBC_DRIVER = '{ODBC Driver 18 for SQL Server}'
+ODBC_DRIVER = '/var/task/lib/libmsodbcsql-18.4.so.1.1'
 
 
 def get_database_password():
