@@ -28,7 +28,7 @@ provider:
 
 functions:
   api:
-    image: ${param:image}
+    image: appimage
     timeout: 15
     events:
       - httpApi:
@@ -37,7 +37,7 @@ functions:
 
   renewalEmailTrigger:
     image:
-      uri: ${param:image}
+      name: appimage
       command:
         - renewal_trigger.handler
     events:
@@ -45,7 +45,7 @@ functions:
 
   sesHandler:
     image:
-      uri: ${param:image}
+      name: appimage
       command:
         - ses_handler.handler
     events:
@@ -53,7 +53,7 @@ functions:
 
   emailSender:
     image:
-      uri: ${param:image}
+      name: appimage
       command:
         - email_sender.handler
     timeout: 15

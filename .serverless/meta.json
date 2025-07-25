@@ -10,6 +10,9 @@
         "runtime": "python3.9",
         "region": "us-east-1",
         "architecture": "x86_64",
+        "iam": {
+          "role": "IamRoleLambdaExecution"
+        },
         "httpApi": {
           "cors": true
         },
@@ -28,39 +31,6 @@
             }
           }
         },
-        "iam": {
-          "role": {
-            "statements": [
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "secretsmanager:GetSecretValue"
-                ],
-                "Resource": "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
-              },
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "ses:SendEmail",
-                  "ses:SendRawEmail"
-                ],
-                "Resource": "*"
-              },
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "sqs:SendMessage"
-                ],
-                "Resource": {
-                  "Fn::GetAtt": [
-                    "RenewalEmailQueue",
-                    "Arn"
-                  ]
-                }
-              }
-            ]
-          }
-        },
         "vpc": {
           "securityGroupIds": [
             "sg-0538cfedbe5d23eb5"
@@ -70,7 +40,7 @@
             "subnet-01ae22cae3a9c51f5"
           ]
         },
-        "stage": "dev",
+        "stage": "prod",
         "versionFunctions": true,
         "compiledCloudFormationTemplate": {
           "AWSTemplateFormatVersion": "2010-09-09",
@@ -79,170 +49,35 @@
             "ApiLogGroup": {
               "Type": "AWS::Logs::LogGroup",
               "Properties": {
-                "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-dev-api"
+                "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-prod-api"
               }
             },
             "RenewalEmailTriggerLogGroup": {
               "Type": "AWS::Logs::LogGroup",
               "Properties": {
-                "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-dev-renewalEmailTrigger"
+                "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-prod-renewalEmailTrigger"
               }
             },
             "SesHandlerLogGroup": {
               "Type": "AWS::Logs::LogGroup",
               "Properties": {
-                "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-dev-sesHandler"
+                "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-prod-sesHandler"
               }
             },
             "EmailSenderLogGroup": {
               "Type": "AWS::Logs::LogGroup",
               "Properties": {
-                "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-dev-emailSender"
-              }
-            },
-            "IamRoleLambdaExecution": {
-              "Type": "AWS::IAM::Role",
-              "Properties": {
-                "AssumeRolePolicyDocument": {
-                  "Version": "2012-10-17",
-                  "Statement": [
-                    {
-                      "Effect": "Allow",
-                      "Principal": {
-                        "Service": [
-                          "lambda.amazonaws.com"
-                        ]
-                      },
-                      "Action": [
-                        "sts:AssumeRole"
-                      ]
-                    }
-                  ]
-                },
-                "Policies": [
-                  {
-                    "PolicyName": {
-                      "Fn::Join": [
-                        "-",
-                        [
-                          "nelcm-record-manager-backend",
-                          "dev",
-                          "lambda"
-                        ]
-                      ]
-                    },
-                    "PolicyDocument": {
-                      "Version": "2012-10-17",
-                      "Statement": [
-                        {
-                          "Effect": "Allow",
-                          "Action": [
-                            "logs:CreateLogStream",
-                            "logs:CreateLogGroup",
-                            "logs:TagResource"
-                          ],
-                          "Resource": [
-                            {
-                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/nelcm-record-manager-backend-dev*:*"
-                            }
-                          ]
-                        },
-                        {
-                          "Effect": "Allow",
-                          "Action": [
-                            "logs:PutLogEvents"
-                          ],
-                          "Resource": [
-                            {
-                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/nelcm-record-manager-backend-dev*:*:*"
-                            }
-                          ]
-                        },
-                        {
-                          "Effect": "Allow",
-                          "Action": [
-                            "secretsmanager:GetSecretValue"
-                          ],
-                          "Resource": "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
-                        },
-                        {
-                          "Effect": "Allow",
-                          "Action": [
-                            "ses:SendEmail",
-                            "ses:SendRawEmail"
-                          ],
-                          "Resource": "*"
-                        },
-                        {
-                          "Effect": "Allow",
-                          "Action": [
-                            "sqs:SendMessage"
-                          ],
-                          "Resource": {
-                            "Fn::GetAtt": [
-                              "RenewalEmailQueue",
-                              "Arn"
-                            ]
-                          }
-                        },
-                        {
-                          "Effect": "Allow",
-                          "Action": [
-                            "sqs:ReceiveMessage",
-                            "sqs:DeleteMessage",
-                            "sqs:GetQueueAttributes"
-                          ],
-                          "Resource": [
-                            {
-                              "Fn::GetAtt": [
-                                "RenewalEmailQueue",
-                                "Arn"
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  }
-                ],
-                "Path": "/",
-                "RoleName": {
-                  "Fn::Join": [
-                    "-",
-                    [
-                      "nelcm-record-manager-backend",
-                      "dev",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "lambdaRole"
-                    ]
-                  ]
-                },
-                "ManagedPolicyArns": [
-                  {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "arn:",
-                        {
-                          "Ref": "AWS::Partition"
-                        },
-                        ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-                      ]
-                    ]
-                  }
-                ]
+                "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-prod-emailSender"
               }
             },
             "ApiLambdaFunction": {
               "Type": "AWS::Lambda::Function",
               "Properties": {
                 "Code": {
-                  "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                  "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
                 },
                 "PackageType": "Image",
-                "FunctionName": "nelcm-record-manager-backend-dev-api",
+                "FunctionName": "nelcm-record-manager-backend-prod-api",
                 "MemorySize": 1024,
                 "Timeout": 15,
                 "Architectures": [
@@ -277,21 +112,21 @@
                 "ApiLogGroup"
               ]
             },
-            "ApiLambdaVersionG2SP5uXNmTcOFENGwBSx33CIpVrISgreuODTZ7EY": {
+            "ApiLambdaVersionXSeYdMMV8dVqMMLo1vjzu6WUveEpir8ieVwsAR8I5o": {
               "Type": "AWS::Lambda::Version",
               "DeletionPolicy": "Retain",
               "Properties": {
                 "FunctionName": {
                   "Ref": "ApiLambdaFunction"
                 },
-                "CodeSha256": "660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                "CodeSha256": "019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
               }
             },
             "RenewalEmailTriggerLambdaFunction": {
               "Type": "AWS::Lambda::Function",
               "Properties": {
                 "Code": {
-                  "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                  "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
                 },
                 "ImageConfig": {
                   "Command": [
@@ -299,7 +134,7 @@
                   ]
                 },
                 "PackageType": "Image",
-                "FunctionName": "nelcm-record-manager-backend-dev-renewalEmailTrigger",
+                "FunctionName": "nelcm-record-manager-backend-prod-renewalEmailTrigger",
                 "MemorySize": 1024,
                 "Timeout": 6,
                 "Architectures": [
@@ -334,21 +169,21 @@
                 "RenewalEmailTriggerLogGroup"
               ]
             },
-            "RenewalEmailTriggerLambdaVersionQhRrl3EYlsBm1hhAU9Aq9OcSjDi5EcGjHXi7ksogXE": {
+            "RenewalEmailTriggerLambdaVersionSUMQUvlfMW1ygs4LlfYYPlfGnJmnWlh2nKtiDPs208": {
               "Type": "AWS::Lambda::Version",
               "DeletionPolicy": "Retain",
               "Properties": {
                 "FunctionName": {
                   "Ref": "RenewalEmailTriggerLambdaFunction"
                 },
-                "CodeSha256": "660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                "CodeSha256": "019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
               }
             },
             "SesHandlerLambdaFunction": {
               "Type": "AWS::Lambda::Function",
               "Properties": {
                 "Code": {
-                  "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                  "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
                 },
                 "ImageConfig": {
                   "Command": [
@@ -356,7 +191,7 @@
                   ]
                 },
                 "PackageType": "Image",
-                "FunctionName": "nelcm-record-manager-backend-dev-sesHandler",
+                "FunctionName": "nelcm-record-manager-backend-prod-sesHandler",
                 "MemorySize": 1024,
                 "Timeout": 6,
                 "Architectures": [
@@ -391,21 +226,21 @@
                 "SesHandlerLogGroup"
               ]
             },
-            "SesHandlerLambdaVersioncIfwyiUNrgO2mkJarlsU29hGZLo5oiXFy4nidhZg8": {
+            "SesHandlerLambdaVersionC0NjciXqcm8tdT5sF2hHDcqc2xkNsd8ML1nsKKIMz4": {
               "Type": "AWS::Lambda::Version",
               "DeletionPolicy": "Retain",
               "Properties": {
                 "FunctionName": {
                   "Ref": "SesHandlerLambdaFunction"
                 },
-                "CodeSha256": "660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                "CodeSha256": "019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
               }
             },
             "EmailSenderLambdaFunction": {
               "Type": "AWS::Lambda::Function",
               "Properties": {
                 "Code": {
-                  "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                  "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
                 },
                 "ImageConfig": {
                   "Command": [
@@ -413,7 +248,7 @@
                   ]
                 },
                 "PackageType": "Image",
-                "FunctionName": "nelcm-record-manager-backend-dev-emailSender",
+                "FunctionName": "nelcm-record-manager-backend-prod-emailSender",
                 "MemorySize": 1024,
                 "Timeout": 15,
                 "Architectures": [
@@ -448,14 +283,14 @@
                 "EmailSenderLogGroup"
               ]
             },
-            "EmailSenderLambdaVersioncFMfhzG2jcNjPg6hlU8zo6JzlJ1BwareyRl3GI4P9U": {
+            "EmailSenderLambdaVersionlyGzq0EkbD0fI91uLagE1l5QpGWYeR29W7IP03txY": {
               "Type": "AWS::Lambda::Version",
               "DeletionPolicy": "Retain",
               "Properties": {
                 "FunctionName": {
                   "Ref": "EmailSenderLambdaFunction"
                 },
-                "CodeSha256": "660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                "CodeSha256": "019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
               }
             },
             "RenewalEmailTriggerEventsRuleSchedule1": {
@@ -571,7 +406,7 @@
             "HttpApi": {
               "Type": "AWS::ApiGatewayV2::Api",
               "Properties": {
-                "Name": "dev-nelcm-record-manager-backend",
+                "Name": "prod-nelcm-record-manager-backend",
                 "ProtocolType": "HTTP",
                 "CorsConfiguration": {
                   "AllowCredentials": "<REDACTED>",
@@ -690,51 +525,117 @@
             "RenewalEmailQueue": {
               "Type": "AWS::SQS::Queue",
               "Properties": {
-                "QueueName": "nelcm-record-manager-backend-dev-renewal-email-queue"
+                "QueueName": "nelcm-record-manager-backend-prod-renewal-email-queue"
               }
+            },
+            "IamRoleLambdaExecution": {
+              "Type": "AWS::IAM::Role",
+              "Properties": {
+                "RoleName": "nelcm-record-manager-backend-prod-lambda-role",
+                "AssumeRolePolicyDocument": {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Principal": {
+                        "Service": [
+                          "lambda.amazonaws.com"
+                        ]
+                      },
+                      "Action": "sts:AssumeRole"
+                    }
+                  ]
+                },
+                "ManagedPolicyArns": [
+                  "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+                ],
+                "Policies": [
+                  {
+                    "PolicyName": "nelcm-record-manager-backend-prod-lambda-policy",
+                    "PolicyDocument": {
+                      "Version": "2012-10-17",
+                      "Statement": [
+                        {
+                          "Effect": "Allow",
+                          "Action": [
+                            "secretsmanager:GetSecretValue"
+                          ],
+                          "Resource": "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
+                        },
+                        {
+                          "Effect": "Allow",
+                          "Action": [
+                            "ses:SendEmail",
+                            "ses:SendRawEmail"
+                          ],
+                          "Resource": "*"
+                        },
+                        {
+                          "Effect": "Allow",
+                          "Action": [
+                            "sqs:SendMessage",
+                            "sqs:ReceiveMessage",
+                            "sqs:DeleteMessage",
+                            "sqs:GetQueueAttributes"
+                          ],
+                          "Resource": {
+                            "Fn::GetAtt": [
+                              "RenewalEmailQueue",
+                              "Arn"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "DependsOn": [
+                "RenewalEmailQueue"
+              ]
             }
           },
           "Outputs": {
             "ServerlessDeploymentBucketName": {
               "Value": "serverless-framework-deployments-us-east-1-173d1e7a-4a2e",
               "Export": {
-                "Name": "sls-nelcm-record-manager-backend-dev-ServerlessDeploymentBucketName"
+                "Name": "sls-nelcm-record-manager-backend-prod-ServerlessDeploymentBucketName"
               }
             },
             "ApiLambdaFunctionQualifiedArn": {
               "Description": "Current Lambda function version",
               "Value": {
-                "Ref": "ApiLambdaVersionG2SP5uXNmTcOFENGwBSx33CIpVrISgreuODTZ7EY"
+                "Ref": "ApiLambdaVersionXSeYdMMV8dVqMMLo1vjzu6WUveEpir8ieVwsAR8I5o"
               },
               "Export": {
-                "Name": "sls-nelcm-record-manager-backend-dev-ApiLambdaFunctionQualifiedArn"
+                "Name": "sls-nelcm-record-manager-backend-prod-ApiLambdaFunctionQualifiedArn"
               }
             },
             "RenewalEmailTriggerLambdaFunctionQualifiedArn": {
               "Description": "Current Lambda function version",
               "Value": {
-                "Ref": "RenewalEmailTriggerLambdaVersionQhRrl3EYlsBm1hhAU9Aq9OcSjDi5EcGjHXi7ksogXE"
+                "Ref": "RenewalEmailTriggerLambdaVersionSUMQUvlfMW1ygs4LlfYYPlfGnJmnWlh2nKtiDPs208"
               },
               "Export": {
-                "Name": "sls-nelcm-record-manager-backend-dev-RenewalEmailTriggerLambdaFunctionQualifiedArn"
+                "Name": "sls-nelcm-record-manager-backend-prod-RenewalEmailTriggerLambdaFunctionQualifiedArn"
               }
             },
             "SesHandlerLambdaFunctionQualifiedArn": {
               "Description": "Current Lambda function version",
               "Value": {
-                "Ref": "SesHandlerLambdaVersioncIfwyiUNrgO2mkJarlsU29hGZLo5oiXFy4nidhZg8"
+                "Ref": "SesHandlerLambdaVersionC0NjciXqcm8tdT5sF2hHDcqc2xkNsd8ML1nsKKIMz4"
               },
               "Export": {
-                "Name": "sls-nelcm-record-manager-backend-dev-SesHandlerLambdaFunctionQualifiedArn"
+                "Name": "sls-nelcm-record-manager-backend-prod-SesHandlerLambdaFunctionQualifiedArn"
               }
             },
             "EmailSenderLambdaFunctionQualifiedArn": {
               "Description": "Current Lambda function version",
               "Value": {
-                "Ref": "EmailSenderLambdaVersioncFMfhzG2jcNjPg6hlU8zo6JzlJ1BwareyRl3GI4P9U"
+                "Ref": "EmailSenderLambdaVersionlyGzq0EkbD0fI91uLagE1l5QpGWYeR29W7IP03txY"
               },
               "Export": {
-                "Name": "sls-nelcm-record-manager-backend-dev-EmailSenderLambdaFunctionQualifiedArn"
+                "Name": "sls-nelcm-record-manager-backend-prod-EmailSenderLambdaFunctionQualifiedArn"
               }
             },
             "HttpApiId": {
@@ -743,7 +644,7 @@
                 "Ref": "HttpApi"
               },
               "Export": {
-                "Name": "sls-nelcm-record-manager-backend-dev-HttpApiId"
+                "Name": "sls-nelcm-record-manager-backend-prod-HttpApiId"
               }
             },
             "HttpApiUrl": {
@@ -768,7 +669,7 @@
                 ]
               },
               "Export": {
-                "Name": "sls-nelcm-record-manager-backend-dev-HttpApiUrl"
+                "Name": "sls-nelcm-record-manager-backend-prod-HttpApiUrl"
               }
             }
           }
@@ -776,9 +677,7 @@
       },
       "functions": {
         "api": {
-          "image": {
-            "name": "appimage"
-          },
+          "image": "appimage",
           "timeout": 15,
           "events": [
             {
@@ -790,11 +689,11 @@
               "resolvedPath": "/api/{proxy+}"
             }
           ],
-          "name": "nelcm-record-manager-backend-dev-api",
+          "name": "nelcm-record-manager-backend-prod-api",
           "package": {},
           "memory": 1024,
           "vpc": {},
-          "versionLogicalId": "ApiLambdaVersionG2SP5uXNmTcOFENGwBSx33CIpVrISgreuODTZ7EY"
+          "versionLogicalId": "ApiLambdaVersionXSeYdMMV8dVqMMLo1vjzu6WUveEpir8ieVwsAR8I5o"
         },
         "renewalEmailTrigger": {
           "image": {
@@ -808,12 +707,12 @@
               "schedule": "cron(0 12 1 * ? *)"
             }
           ],
-          "name": "nelcm-record-manager-backend-dev-renewalEmailTrigger",
+          "name": "nelcm-record-manager-backend-prod-renewalEmailTrigger",
           "package": {},
           "memory": 1024,
           "timeout": 6,
           "vpc": {},
-          "versionLogicalId": "RenewalEmailTriggerLambdaVersionQhRrl3EYlsBm1hhAU9Aq9OcSjDi5EcGjHXi7ksogXE"
+          "versionLogicalId": "RenewalEmailTriggerLambdaVersionSUMQUvlfMW1ygs4LlfYYPlfGnJmnWlh2nKtiDPs208"
         },
         "sesHandler": {
           "image": {
@@ -827,12 +726,12 @@
               "sns": "nelcm-ses-events"
             }
           ],
-          "name": "nelcm-record-manager-backend-dev-sesHandler",
+          "name": "nelcm-record-manager-backend-prod-sesHandler",
           "package": {},
           "memory": 1024,
           "timeout": 6,
           "vpc": {},
-          "versionLogicalId": "SesHandlerLambdaVersioncIfwyiUNrgO2mkJarlsU29hGZLo5oiXFy4nidhZg8"
+          "versionLogicalId": "SesHandlerLambdaVersionC0NjciXqcm8tdT5sF2hHDcqc2xkNsd8ML1nsKKIMz4"
         },
         "emailSender": {
           "image": {
@@ -855,11 +754,11 @@
               }
             }
           ],
-          "name": "nelcm-record-manager-backend-dev-emailSender",
+          "name": "nelcm-record-manager-backend-prod-emailSender",
           "package": {},
           "memory": 1024,
           "vpc": {},
-          "versionLogicalId": "EmailSenderLambdaVersioncFMfhzG2jcNjPg6hlU8zo6JzlJ1BwareyRl3GI4P9U"
+          "versionLogicalId": "EmailSenderLambdaVersionlyGzq0EkbD0fI91uLagE1l5QpGWYeR29W7IP03txY"
         }
       },
       "resources": {
@@ -867,111 +766,13 @@
           "RenewalEmailQueue": {
             "Type": "AWS::SQS::Queue",
             "Properties": {
-              "QueueName": "nelcm-record-manager-backend-dev-renewal-email-queue"
-            }
-          }
-        },
-        "Outputs": {}
-      }
-    },
-    "provider": {
-      "name": "aws",
-      "runtime": "python3.9",
-      "region": "us-east-1",
-      "architecture": "x86_64",
-      "httpApi": {
-        "cors": true
-      },
-      "environment": {
-        "LD_LIBRARY_PATH": "/var/task/lib",
-        "ODBCSYSINI": "/var/task",
-        "SQS_QUEUE_URL": {
-          "Ref": "RenewalEmailQueue"
-        }
-      },
-      "ecr": {
-        "images": {
-          "appimage": {
-            "path": "./",
-            "platform": "linux/amd64"
-          }
-        }
-      },
-      "iam": {
-        "role": {
-          "statements": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "secretsmanager:GetSecretValue"
-              ],
-              "Resource": "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "ses:SendEmail",
-                "ses:SendRawEmail"
-              ],
-              "Resource": "*"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "sqs:SendMessage"
-              ],
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RenewalEmailQueue",
-                  "Arn"
-                ]
-              }
-            }
-          ]
-        }
-      },
-      "vpc": {
-        "securityGroupIds": [
-          "sg-0538cfedbe5d23eb5"
-        ],
-        "subnetIds": [
-          "subnet-06ca61fce5f705db2",
-          "subnet-01ae22cae3a9c51f5"
-        ]
-      },
-      "stage": "dev",
-      "versionFunctions": true,
-      "compiledCloudFormationTemplate": {
-        "AWSTemplateFormatVersion": "2010-09-09",
-        "Description": "The AWS CloudFormation template for this Serverless application",
-        "Resources": {
-          "ApiLogGroup": {
-            "Type": "AWS::Logs::LogGroup",
-            "Properties": {
-              "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-dev-api"
-            }
-          },
-          "RenewalEmailTriggerLogGroup": {
-            "Type": "AWS::Logs::LogGroup",
-            "Properties": {
-              "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-dev-renewalEmailTrigger"
-            }
-          },
-          "SesHandlerLogGroup": {
-            "Type": "AWS::Logs::LogGroup",
-            "Properties": {
-              "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-dev-sesHandler"
-            }
-          },
-          "EmailSenderLogGroup": {
-            "Type": "AWS::Logs::LogGroup",
-            "Properties": {
-              "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-dev-emailSender"
+              "QueueName": "nelcm-record-manager-backend-prod-renewal-email-queue"
             }
           },
           "IamRoleLambdaExecution": {
             "Type": "AWS::IAM::Role",
             "Properties": {
+              "RoleName": "nelcm-record-manager-backend-prod-lambda-role",
               "AssumeRolePolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [
@@ -982,51 +783,19 @@
                         "lambda.amazonaws.com"
                       ]
                     },
-                    "Action": [
-                      "sts:AssumeRole"
-                    ]
+                    "Action": "sts:AssumeRole"
                   }
                 ]
               },
+              "ManagedPolicyArns": [
+                "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ],
               "Policies": [
                 {
-                  "PolicyName": {
-                    "Fn::Join": [
-                      "-",
-                      [
-                        "nelcm-record-manager-backend",
-                        "dev",
-                        "lambda"
-                      ]
-                    ]
-                  },
+                  "PolicyName": "nelcm-record-manager-backend-prod-lambda-policy",
                   "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
-                      {
-                        "Effect": "Allow",
-                        "Action": [
-                          "logs:CreateLogStream",
-                          "logs:CreateLogGroup",
-                          "logs:TagResource"
-                        ],
-                        "Resource": [
-                          {
-                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/nelcm-record-manager-backend-dev*:*"
-                          }
-                        ]
-                      },
-                      {
-                        "Effect": "Allow",
-                        "Action": [
-                          "logs:PutLogEvents"
-                        ],
-                        "Resource": [
-                          {
-                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/nelcm-record-manager-backend-dev*:*:*"
-                          }
-                        ]
-                      },
                       {
                         "Effect": "Allow",
                         "Action": [
@@ -1045,7 +814,10 @@
                       {
                         "Effect": "Allow",
                         "Action": [
-                          "sqs:SendMessage"
+                          "sqs:SendMessage",
+                          "sqs:ReceiveMessage",
+                          "sqs:DeleteMessage",
+                          "sqs:GetQueueAttributes"
                         ],
                         "Resource": {
                           "Fn::GetAtt": [
@@ -1053,65 +825,93 @@
                             "Arn"
                           ]
                         }
-                      },
-                      {
-                        "Effect": "Allow",
-                        "Action": [
-                          "sqs:ReceiveMessage",
-                          "sqs:DeleteMessage",
-                          "sqs:GetQueueAttributes"
-                        ],
-                        "Resource": [
-                          {
-                            "Fn::GetAtt": [
-                              "RenewalEmailQueue",
-                              "Arn"
-                            ]
-                          }
-                        ]
                       }
                     ]
                   }
                 }
-              ],
-              "Path": "/",
-              "RoleName": {
-                "Fn::Join": [
-                  "-",
-                  [
-                    "nelcm-record-manager-backend",
-                    "dev",
-                    {
-                      "Ref": "AWS::Region"
-                    },
-                    "lambdaRole"
-                  ]
-                ]
-              },
-              "ManagedPolicyArns": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-                    ]
-                  ]
-                }
               ]
+            },
+            "DependsOn": [
+              "RenewalEmailQueue"
+            ]
+          }
+        },
+        "Outputs": {}
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "python3.9",
+      "region": "us-east-1",
+      "architecture": "x86_64",
+      "iam": {
+        "role": "IamRoleLambdaExecution"
+      },
+      "httpApi": {
+        "cors": true
+      },
+      "environment": {
+        "LD_LIBRARY_PATH": "/var/task/lib",
+        "ODBCSYSINI": "/var/task",
+        "SQS_QUEUE_URL": {
+          "Ref": "RenewalEmailQueue"
+        }
+      },
+      "ecr": {
+        "images": {
+          "appimage": {
+            "path": "./",
+            "platform": "linux/amd64"
+          }
+        }
+      },
+      "vpc": {
+        "securityGroupIds": [
+          "sg-0538cfedbe5d23eb5"
+        ],
+        "subnetIds": [
+          "subnet-06ca61fce5f705db2",
+          "subnet-01ae22cae3a9c51f5"
+        ]
+      },
+      "stage": "prod",
+      "versionFunctions": true,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ApiLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-prod-api"
+            }
+          },
+          "RenewalEmailTriggerLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-prod-renewalEmailTrigger"
+            }
+          },
+          "SesHandlerLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-prod-sesHandler"
+            }
+          },
+          "EmailSenderLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/nelcm-record-manager-backend-prod-emailSender"
             }
           },
           "ApiLambdaFunction": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
               "Code": {
-                "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
               },
               "PackageType": "Image",
-              "FunctionName": "nelcm-record-manager-backend-dev-api",
+              "FunctionName": "nelcm-record-manager-backend-prod-api",
               "MemorySize": 1024,
               "Timeout": 15,
               "Architectures": [
@@ -1146,21 +946,21 @@
               "ApiLogGroup"
             ]
           },
-          "ApiLambdaVersionG2SP5uXNmTcOFENGwBSx33CIpVrISgreuODTZ7EY": {
+          "ApiLambdaVersionXSeYdMMV8dVqMMLo1vjzu6WUveEpir8ieVwsAR8I5o": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "ApiLambdaFunction"
               },
-              "CodeSha256": "660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+              "CodeSha256": "019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
             }
           },
           "RenewalEmailTriggerLambdaFunction": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
               "Code": {
-                "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
               },
               "ImageConfig": {
                 "Command": [
@@ -1168,7 +968,7 @@
                 ]
               },
               "PackageType": "Image",
-              "FunctionName": "nelcm-record-manager-backend-dev-renewalEmailTrigger",
+              "FunctionName": "nelcm-record-manager-backend-prod-renewalEmailTrigger",
               "MemorySize": 1024,
               "Timeout": 6,
               "Architectures": [
@@ -1203,21 +1003,21 @@
               "RenewalEmailTriggerLogGroup"
             ]
           },
-          "RenewalEmailTriggerLambdaVersionQhRrl3EYlsBm1hhAU9Aq9OcSjDi5EcGjHXi7ksogXE": {
+          "RenewalEmailTriggerLambdaVersionSUMQUvlfMW1ygs4LlfYYPlfGnJmnWlh2nKtiDPs208": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "RenewalEmailTriggerLambdaFunction"
               },
-              "CodeSha256": "660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+              "CodeSha256": "019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
             }
           },
           "SesHandlerLambdaFunction": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
               "Code": {
-                "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
               },
               "ImageConfig": {
                 "Command": [
@@ -1225,7 +1025,7 @@
                 ]
               },
               "PackageType": "Image",
-              "FunctionName": "nelcm-record-manager-backend-dev-sesHandler",
+              "FunctionName": "nelcm-record-manager-backend-prod-sesHandler",
               "MemorySize": 1024,
               "Timeout": 6,
               "Architectures": [
@@ -1260,21 +1060,21 @@
               "SesHandlerLogGroup"
             ]
           },
-          "SesHandlerLambdaVersioncIfwyiUNrgO2mkJarlsU29hGZLo5oiXFy4nidhZg8": {
+          "SesHandlerLambdaVersionC0NjciXqcm8tdT5sF2hHDcqc2xkNsd8ML1nsKKIMz4": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "SesHandlerLambdaFunction"
               },
-              "CodeSha256": "660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+              "CodeSha256": "019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
             }
           },
           "EmailSenderLambdaFunction": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
               "Code": {
-                "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+                "ImageUri": "101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
               },
               "ImageConfig": {
                 "Command": [
@@ -1282,7 +1082,7 @@
                 ]
               },
               "PackageType": "Image",
-              "FunctionName": "nelcm-record-manager-backend-dev-emailSender",
+              "FunctionName": "nelcm-record-manager-backend-prod-emailSender",
               "MemorySize": 1024,
               "Timeout": 15,
               "Architectures": [
@@ -1317,14 +1117,14 @@
               "EmailSenderLogGroup"
             ]
           },
-          "EmailSenderLambdaVersioncFMfhzG2jcNjPg6hlU8zo6JzlJ1BwareyRl3GI4P9U": {
+          "EmailSenderLambdaVersionlyGzq0EkbD0fI91uLagE1l5QpGWYeR29W7IP03txY": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "EmailSenderLambdaFunction"
               },
-              "CodeSha256": "660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13"
+              "CodeSha256": "019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2"
             }
           },
           "RenewalEmailTriggerEventsRuleSchedule1": {
@@ -1440,7 +1240,7 @@
           "HttpApi": {
             "Type": "AWS::ApiGatewayV2::Api",
             "Properties": {
-              "Name": "dev-nelcm-record-manager-backend",
+              "Name": "prod-nelcm-record-manager-backend",
               "ProtocolType": "HTTP",
               "CorsConfiguration": {
                 "AllowCredentials": "<REDACTED>",
@@ -1559,51 +1359,117 @@
           "RenewalEmailQueue": {
             "Type": "AWS::SQS::Queue",
             "Properties": {
-              "QueueName": "nelcm-record-manager-backend-dev-renewal-email-queue"
+              "QueueName": "nelcm-record-manager-backend-prod-renewal-email-queue"
             }
+          },
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "RoleName": "nelcm-record-manager-backend-prod-lambda-role",
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": "sts:AssumeRole"
+                  }
+                ]
+              },
+              "ManagedPolicyArns": [
+                "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ],
+              "Policies": [
+                {
+                  "PolicyName": "nelcm-record-manager-backend-prod-lambda-policy",
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "secretsmanager:GetSecretValue"
+                        ],
+                        "Resource": "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "ses:SendEmail",
+                          "ses:SendRawEmail"
+                        ],
+                        "Resource": "*"
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "sqs:SendMessage",
+                          "sqs:ReceiveMessage",
+                          "sqs:DeleteMessage",
+                          "sqs:GetQueueAttributes"
+                        ],
+                        "Resource": {
+                          "Fn::GetAtt": [
+                            "RenewalEmailQueue",
+                            "Arn"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "DependsOn": [
+              "RenewalEmailQueue"
+            ]
           }
         },
         "Outputs": {
           "ServerlessDeploymentBucketName": {
             "Value": "serverless-framework-deployments-us-east-1-173d1e7a-4a2e",
             "Export": {
-              "Name": "sls-nelcm-record-manager-backend-dev-ServerlessDeploymentBucketName"
+              "Name": "sls-nelcm-record-manager-backend-prod-ServerlessDeploymentBucketName"
             }
           },
           "ApiLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "ApiLambdaVersionG2SP5uXNmTcOFENGwBSx33CIpVrISgreuODTZ7EY"
+              "Ref": "ApiLambdaVersionXSeYdMMV8dVqMMLo1vjzu6WUveEpir8ieVwsAR8I5o"
             },
             "Export": {
-              "Name": "sls-nelcm-record-manager-backend-dev-ApiLambdaFunctionQualifiedArn"
+              "Name": "sls-nelcm-record-manager-backend-prod-ApiLambdaFunctionQualifiedArn"
             }
           },
           "RenewalEmailTriggerLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "RenewalEmailTriggerLambdaVersionQhRrl3EYlsBm1hhAU9Aq9OcSjDi5EcGjHXi7ksogXE"
+              "Ref": "RenewalEmailTriggerLambdaVersionSUMQUvlfMW1ygs4LlfYYPlfGnJmnWlh2nKtiDPs208"
             },
             "Export": {
-              "Name": "sls-nelcm-record-manager-backend-dev-RenewalEmailTriggerLambdaFunctionQualifiedArn"
+              "Name": "sls-nelcm-record-manager-backend-prod-RenewalEmailTriggerLambdaFunctionQualifiedArn"
             }
           },
           "SesHandlerLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "SesHandlerLambdaVersioncIfwyiUNrgO2mkJarlsU29hGZLo5oiXFy4nidhZg8"
+              "Ref": "SesHandlerLambdaVersionC0NjciXqcm8tdT5sF2hHDcqc2xkNsd8ML1nsKKIMz4"
             },
             "Export": {
-              "Name": "sls-nelcm-record-manager-backend-dev-SesHandlerLambdaFunctionQualifiedArn"
+              "Name": "sls-nelcm-record-manager-backend-prod-SesHandlerLambdaFunctionQualifiedArn"
             }
           },
           "EmailSenderLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "EmailSenderLambdaVersioncFMfhzG2jcNjPg6hlU8zo6JzlJ1BwareyRl3GI4P9U"
+              "Ref": "EmailSenderLambdaVersionlyGzq0EkbD0fI91uLagE1l5QpGWYeR29W7IP03txY"
             },
             "Export": {
-              "Name": "sls-nelcm-record-manager-backend-dev-EmailSenderLambdaFunctionQualifiedArn"
+              "Name": "sls-nelcm-record-manager-backend-prod-EmailSenderLambdaFunctionQualifiedArn"
             }
           },
           "HttpApiId": {
@@ -1612,7 +1478,7 @@
               "Ref": "HttpApi"
             },
             "Export": {
-              "Name": "sls-nelcm-record-manager-backend-dev-HttpApiId"
+              "Name": "sls-nelcm-record-manager-backend-prod-HttpApiId"
             }
           },
           "HttpApiUrl": {
@@ -1637,7 +1503,7 @@
               ]
             },
             "Export": {
-              "Name": "sls-nelcm-record-manager-backend-dev-HttpApiUrl"
+              "Name": "sls-nelcm-record-manager-backend-prod-HttpApiUrl"
             }
           }
         }
@@ -1653,15 +1519,17 @@
       "instanceParameters": null
     },
     "error": {
-      "message": "An error occurred: EmailSenderLambdaFunction - Resource handler returned message: \"The image manifest, config or layer media type for the source image 101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13 is not supported. (Service: Lambda, Status Code: 400, Request ID: b2a1e1c2-4f1a-4474-b412-7935af42dd58) (SDK Attempt Count: 1)\" (RequestToken: a1c6ba0f-7ac9-3558-9f7f-30ff65a18595, HandlerErrorCode: InvalidRequest).",
-      "stack": "ServerlessError2: An error occurred: EmailSenderLambdaFunction - Resource handler returned message: \"The image manifest, config or layer media type for the source image 101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-dev@sha256:660922e05ed9f504f79351dbeae10640b613ba2495b7644c7b639f05b38fdb13 is not supported. (Service: Lambda, Status Code: 400, Request ID: b2a1e1c2-4f1a-4474-b412-7935af42dd58) (SDK Attempt Count: 1)\" (RequestToken: a1c6ba0f-7ac9-3558-9f7f-30ff65a18595, HandlerErrorCode: InvalidRequest).\n    at file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1153:828\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async AwsDeploy.createFallback (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1153:23484)\n    at async aws:deploy:deploy:updateStack (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1164:7906)\n    at async PluginManager.runHooks (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:9865)\n    at async PluginManager.invoke (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:10634)\n    at async PluginManager.spawn (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:10993)\n    at async PluginManager.runHooks (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:9865)\n    at async PluginManager.invoke (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:10634)\n    at async PluginManager.run (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:11364)",
+      "message": "An error occurred: SesHandlerLambdaFunction - Resource handler returned message: \"The image manifest, config or layer media type for the source image 101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2 is not supported. (Service: Lambda, Status Code: 400, Request ID: 1841d07f-56ea-4909-b7a6-88c4e2623a8d) (SDK Attempt Count: 1)\" (RequestToken: bf3ceccd-cfc0-d060-babe-cde3854cbdfa, HandlerErrorCode: InvalidRequest).",
+      "stack": "ServerlessError2: An error occurred: SesHandlerLambdaFunction - Resource handler returned message: \"The image manifest, config or layer media type for the source image 101067743115.dkr.ecr.us-east-1.amazonaws.com/serverless-nelcm-record-manager-backend-prod@sha256:019233f0573df01ad72e198058708666fe01c5de768cb8611d4399c875413bd2 is not supported. (Service: Lambda, Status Code: 400, Request ID: 1841d07f-56ea-4909-b7a6-88c4e2623a8d) (SDK Attempt Count: 1)\" (RequestToken: bf3ceccd-cfc0-d060-babe-cde3854cbdfa, HandlerErrorCode: InvalidRequest).\n    at file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1153:828\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async AwsDeploy.createFallback (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1153:23484)\n    at async aws:deploy:deploy:updateStack (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1164:7906)\n    at async PluginManager.runHooks (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:9865)\n    at async PluginManager.invoke (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:10634)\n    at async PluginManager.spawn (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:10993)\n    at async PluginManager.runHooks (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:9865)\n    at async PluginManager.invoke (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:10634)\n    at async PluginManager.run (file:///C:/Users/khmag/.serverless/releases/4.17.2/package/dist/sf-core.js:1355:11364)",
       "code": "AWS_CLOUD_FORMATION_CREATE_STACK_INTERNAL_LAMBDA_FUNCTION_CREATE_FAILED"
     },
-    "serviceRawFile": "service: nelcm-record-manager-backend\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.9\r\n  region: us-east-1\r\n  architecture: x86_64\r\n  httpApi:\r\n    cors: true\r\n  environment:\r\n    LD_LIBRARY_PATH: /var/task/lib\r\n    ODBCSYSINI: /var/task\r\n    SQS_QUEUE_URL: !Ref RenewalEmailQueue\r\n  ecr:\r\n    images:\r\n      appimage:\r\n        path: ./\r\n        platform: linux/amd64\r\n  iam:\r\n    role:\r\n      statements:\r\n        - Effect: \"Allow\"\r\n          Action:\r\n            - \"secretsmanager:GetSecretValue\"\r\n          Resource: \"arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*\"\r\n        - Effect: \"Allow\"\r\n          Action:\r\n            - \"ses:SendEmail\"\r\n            - \"ses:SendRawEmail\"\r\n          Resource: \"*\"\r\n        - Effect: \"Allow\"\r\n          Action:\r\n            - \"sqs:SendMessage\"\r\n          Resource: !GetAtt RenewalEmailQueue.Arn\r\n  \r\n  # CORRECTED PLACEMENT: vpc is a direct child of provider\r\n  vpc:\r\n    securityGroupIds:\r\n      - sg-0538cfedbe5d23eb5\r\n    subnetIds:\r\n      - subnet-06ca61fce5f705db2\r\n      - subnet-01ae22cae3a9c51f5\r\n\r\nfunctions:\r\n  api:\r\n    image:\r\n      name: appimage\r\n    timeout: 15\r\n    events:\r\n      - httpApi:\r\n          path: /api/{proxy+}\r\n          method: any\r\n          \r\n  renewalEmailTrigger:\r\n    image:\r\n      name: appimage # Reuse the same ECR image\r\n      command:\r\n        - renewal_trigger.handler # Correctly override the Docker CMD for this function\r\n    events:\r\n      - schedule: cron(0 12 1 * ? *) # Runs at 12:00 PM UTC on the 1st day of every month\r\n      \r\n  sesHandler:\r\n    image:\r\n      name: appimage # Reuse the same ECR image\r\n      command:\r\n        - ses_handler.handler # Point to the new handler\r\n    events:\r\n      - sns: nelcm-ses-events # Subscribe to this SNS topic\r\n      \r\n  emailSender:\r\n    image:\r\n      name: appimage\r\n      command:\r\n        - email_sender.handler # Points to the new handler file\r\n    timeout: 15\r\n    events:\r\n      # This function is triggered by messages on the SQS queue\r\n      - sqs:\r\n          arn: !GetAtt RenewalEmailQueue.Arn\r\n          batchSize: 5 # Process up to 5 emails at a time\r\n          \r\nresources:\r\n  Resources:\r\n    RenewalEmailQueue:\r\n      Type: AWS::SQS::Queue\r\n      Properties:\r\n        # Create a unique queue name based on the service and stage\r\n        QueueName: ${self:service}-${sls:stage}-renewal-email-queue",
+    "serviceRawFile": "service: nelcm-record-manager-backend\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.9\r\n  region: us-east-1\r\n  architecture: x86_64\r\n  # Assign the explicitly defined role to all functions\r\n  iam:\r\n    role: IamRoleLambdaExecution\r\n  httpApi:\r\n    cors: true\r\n  environment:\r\n    LD_LIBRARY_PATH: /var/task/lib\r\n    ODBCSYSINI: /var/task\r\n    SQS_QUEUE_URL: !Ref RenewalEmailQueue\r\n  ecr:\r\n    images:\r\n      appimage:\r\n        path: ./\r\n        platform: linux/amd64\r\n  vpc:\r\n    securityGroupIds:\r\n      - sg-0538cfedbe5d23eb5\r\n    subnetIds:\r\n      - subnet-06ca61fce5f705db2\r\n      - subnet-01ae22cae3a9c51f5\r\n\r\nfunctions:\r\n  api:\r\n    image: appimage\r\n    timeout: 15\r\n    events:\r\n      - httpApi:\r\n          path: /api/{proxy+}\r\n          method: any\r\n\r\n  renewalEmailTrigger:\r\n    image:\r\n      name: appimage\r\n      command:\r\n        - renewal_trigger.handler\r\n    events:\r\n      - schedule: cron(0 12 1 * ? *)\r\n\r\n  sesHandler:\r\n    image:\r\n      name: appimage\r\n      command:\r\n        - ses_handler.handler\r\n    events:\r\n      - sns: nelcm-ses-events\r\n\r\n  emailSender:\r\n    image:\r\n      name: appimage\r\n      command:\r\n        - email_sender.handler\r\n    timeout: 15\r\n    events:\r\n      - sqs:\r\n          arn: !GetAtt RenewalEmailQueue.Arn\r\n          batchSize: 5\r\n\r\nresources:\r\n  Resources:\r\n    # --- 1. Define the SQS Queue First ---\r\n    RenewalEmailQueue:\r\n      Type: AWS::SQS::Queue\r\n      Properties:\r\n        QueueName: ${self:service}-${sls:stage}-renewal-email-queue\r\n\r\n    # --- 2. Explicitly Define the IAM Role and its Permissions ---\r\n    IamRoleLambdaExecution:\r\n      Type: AWS::IAM::Role\r\n      Properties:\r\n        RoleName: ${self:service}-${sls:stage}-lambda-role\r\n        AssumeRolePolicyDocument:\r\n          Version: '2012-10-17'\r\n          Statement:\r\n            - Effect: Allow\r\n              Principal:\r\n                Service:\r\n                  - lambda.amazonaws.com\r\n              Action: sts:AssumeRole\r\n        # This role needs basic permissions to run in a VPC and write logs\r\n        ManagedPolicyArns:\r\n          - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole\r\n        Policies:\r\n          - PolicyName: ${self:service}-${sls:stage}-lambda-policy\r\n            PolicyDocument:\r\n              Version: '2012-10-17'\r\n              Statement:\r\n                - Effect: Allow\r\n                  Action:\r\n                    - \"secretsmanager:GetSecretValue\"\r\n                  Resource: \"arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*\"\r\n                - Effect: Allow\r\n                  Action:\r\n                    - \"ses:SendEmail\"\r\n                    - \"ses:SendRawEmail\"\r\n                  Resource: \"*\"\r\n                - Effect: Allow\r\n                  Action:\r\n                    - \"sqs:SendMessage\"\r\n                    - \"sqs:ReceiveMessage\" # emailSender needs this permission too\r\n                    - \"sqs:DeleteMessage\"\r\n                    - \"sqs:GetQueueAttributes\"\r\n                  Resource: !GetAtt RenewalEmailQueue.Arn\r\n      # --- 3. Make the Role explicitly depend on the Queue ---\r\n      DependsOn:\r\n        - RenewalEmailQueue",
     "command": [
       "deploy"
     ],
-    "options": {},
+    "options": {
+      "stage": "prod"
+    },
     "orgId": "84493e23-7fa3-4fbd-a3b4-1857b806f9fa",
     "orgName": "kedainsights",
     "userId": "CmHcmYNBSsw3rWrdz3",
