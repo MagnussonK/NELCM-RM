@@ -113,19 +113,6 @@ resources:
       DependsOn:
         - RenewalEmailQueue
                   
-    SecretsManagerVPCEndpoint:
-      Type: AWS::EC2::VPCEndpoint
-      Properties:
-        VpcId: vpc-009272e02ccd8b01b # <--- IMPORTANT: Add your VPC ID here
-        ServiceName: com.amazonaws.${self:provider.region}.secretsmanager
-        VpcEndpointType: Interface
-        PrivateDnsEnabled: true
-        SubnetIds:
-          - subnet-06ca61fce5f705db2
-          - subnet-01ae22cae3a9c51f5
-        SecurityGroupIds:
-          - sg-0538cfedbe5d23eb5
-
     SesVPCEndpoint:
       Type: AWS::EC2::VPCEndpoint
       Properties:
