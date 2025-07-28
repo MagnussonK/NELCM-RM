@@ -36,7 +36,7 @@ def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_da
     SENDER_NAME = "The Childrens Museum"
     SENDER_EMAIL = "nelcm98@gmail.com"
     SMTP_HOST = "vpce-0f5b358e20d5e0339-0wws8voj.email-smtp.us-east-1.vpce.amazonaws.com"
-    SMTP_PORT = 465
+    SMTP_PORT = 587
 
     SMTP_USER = secrets.get('smtp_user')
     SMTP_PASS = secrets.get('smtp_password')
