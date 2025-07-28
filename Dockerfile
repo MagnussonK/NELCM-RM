@@ -3,8 +3,9 @@
 # Start from the official AWS Lambda base image for Python 3.9
 FROM public.ecr.aws/lambda/python:3.9
 
+# Correctly set the MTU for the eth0 network interface
 ARG MTU_VALUE
-RUN echo $'{\n  "mtu":' ${MTU_VALUE} $'\n}' > /etc/docker/daemon.json
+RUN echo "MTU=${MTU_VALUE}" >> /etc/sysconfig/network-scripts/ifcfg-eth0
 
 # Set the working directory
 WORKDIR /var/task
@@ -32,6 +33,5 @@ COPY app.py lambda.py ses_handler.py renewal_trigger.py email_sender.py odbcinst
 # Set environment variables to use our packaged libraries and config
 ENV LD_LIBRARY_PATH=./lib
 ENV ODBCSYSINI=.
-
 # Set the command to run your handler
 CMD [ "lambda.handler" ]
