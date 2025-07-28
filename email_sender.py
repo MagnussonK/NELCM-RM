@@ -41,6 +41,8 @@ def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_da
     
     SMTP_USER = secrets['smtp_user']
     SMTP_PASS = secrets['smtp_password']
+    
+    logger.info(f"Connecting to SMTP_HOST: '{SMTP_HOST}'")
 
     SUBJECT = "Your Children's Museum Membership Is Expiring Soon!"
     BODY_HTML = f"""
