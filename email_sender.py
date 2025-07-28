@@ -68,17 +68,15 @@ def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_da
 
     server = None
     try:
-        logger.info("Initializing SMTP client...")
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10)
+        logger.info("Initializing SMTP_SSL client for port 465...")
+        server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10)
         logger.info("Setting debug level to 1...")
         server.set_debuglevel(1)
         
-        logger.info("Upgrading connection to TLS...")
-        server.starttls()
+        # The starttls() call is removed because the connection is already secure.
         
         logger.info("Attempting server.login()...")
         server.login(SMTP_USER, SMTP_PASS)
-        logger.info("Login successful.")
 
         logger.info("Attempting server.sendmail()...")
         server.sendmail(SENDER_EMAIL, [recipient_email], msg.as_string())
