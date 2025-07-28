@@ -117,7 +117,7 @@ resources:
       Type: AWS::EC2::VPCEndpoint
       Properties:
         VpcId: vpc-009272e02ccd8b01b # <--- IMPORTANT: Add your VPC ID here
-        ServiceName: com.amazonaws.${self:provider.region}.ses
+        ServiceName: com.amazonaws.${self:provider.region}.email-smtp
         VpcEndpointType: Interface
         PrivateDnsEnabled: true
         SubnetIds:
