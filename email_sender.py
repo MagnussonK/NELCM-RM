@@ -50,6 +50,9 @@ def get_db_connection():
 def send_renewal_email_ses(recipient_email, member_name, expiration_date):
     SENDER = "The Childrens Museum <nelcm98@gmail.com>"
     AWS_REGION = "us-east-1"
+    # PASTE THE DNS NAME YOU COPIED FROM THE VPC ENDPOINT HERE
+    ENDPOINT_URL = "https://vpce-0f5b358e20d5e0339-0wws8voj.email-smtp.us-east-1.vpce.amazonaws.com"
+    
     SUBJECT = "Your Children's Museum Membership Is Expiring Soon!"
     BODY_HTML = f"""
     <html><head></head><body>
@@ -62,17 +65,24 @@ def send_renewal_email_ses(recipient_email, member_name, expiration_date):
       <p>Sincerely,</p><p><b>The Children's Museum Team</b></p>
     </body></html>
     """
-    ses_client = boto3.client('ses', region_name=AWS_REGION)
+    
+    # Initialize the client, telling it exactly which endpoint URL to use
+    ses_client = boto3.client(
+        'ses', 
+        region_name=AWS_REGION,
+        endpoint_url=ENDPOINT_URL
+    )
+    
     try:
-        logger.info(f"Attempting to send email to {recipient_email} via SES...")
+        logger.info(f"Attempting to send email to {recipient_email} via private endpoint...")
         response = ses_client.send_email(
             Source=SENDER,
             Destination={'ToAddresses': [recipient_email]},
             Message={
                 'Body': {'Html': {'Charset': "UTF-8", 'Data': BODY_HTML}},
                 'Subject': {'Charset': "UTF-8", 'Data': SUBJECT},
-            },
-            ConfigurationSetName='nelcm-transactional-config'
+            }
+            # Temporarily removed ConfigurationSetName to simplify the call
         )
         logger.info(f"SES send_email call completed. Message ID: {response['MessageId']}")
         return True
