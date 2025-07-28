@@ -57,7 +57,7 @@ functions:
       name: appimage
       command:
         - email_sender.handler
-    timeout: 5
+    timeout: 15
     events:
       - sqs:
           arn: !GetAtt RenewalEmailQueue.Arn
@@ -84,6 +84,7 @@ resources:
                 Service:
                   - lambda.amazonaws.com
               Action: sts:AssumeRole
+              
         # This role needs basic permissions to run in a VPC and write logs
         ManagedPolicyArns:
           - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
@@ -108,6 +109,45 @@ resources:
                     - "sqs:DeleteMessage"
                     - "sqs:GetQueueAttributes"
                   Resource: !GetAtt RenewalEmailQueue.Arn
-      # --- 3. Make the Role explicitly depend on the Queue ---
+            # --- 3. Make the Role explicitly depend on the Queue ---
       DependsOn:
         - RenewalEmailQueue
+                  
+    SecretsManagerVPCEndpoint:
+      Type: AWS::EC2::VPCEndpoint
+      Properties:
+        VpcId: vpc-0123456789abcdef0 # <--- IMPORTANT: Add your VPC ID here
+        ServiceName: com.amazonaws.${self:provider.region}.secretsmanager
+        VpcEndpointType: Interface
+        PrivateDnsEnabled: true
+        SubnetIds:
+          - subnet-06ca61fce5f705db2
+          - subnet-01ae22cae3a9c51f5
+        SecurityGroupIds:
+          - sg-0538cfedbe5d23eb5
+
+    SesVPCEndpoint:
+      Type: AWS::EC2::VPCEndpoint
+      Properties:
+        VpcId: vpc-0123456789abcdef0 # <--- IMPORTANT: Add your VPC ID here
+        ServiceName: com.amazonaws.${self:provider.region}.ses
+        VpcEndpointType: Interface
+        PrivateDnsEnabled: true
+        SubnetIds:
+          - subnet-06ca61fce5f705db2
+          - subnet-01ae22cae3a9c51f5
+        SecurityGroupIds:
+          - sg-0538cfedbe5d23eb5
+
+    SqsVPCEndpoint:
+      Type: AWS::EC2::VPCEndpoint
+      Properties:
+        VpcId: vpc-0123456789abcdef0 # <--- IMPORTANT: Add your VPC ID here
+        ServiceName: com.amazonaws.${self:provider.region}.sqs
+        VpcEndpointType: Interface
+        PrivateDnsEnabled: true
+        SubnetIds:
+          - subnet-06ca61fce5f705db2
+          - subnet-01ae22cae3a9c51f5
+        SecurityGroupIds:
+          - sg-0538cfedbe5d23eb5
