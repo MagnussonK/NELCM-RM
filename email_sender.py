@@ -35,7 +35,8 @@ def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_da
     """Sends the renewal email using smtplib via the VPC endpoint."""
     SENDER_NAME = "The Childrens Museum"
     SENDER_EMAIL = "nelcm98@gmail.com"
-    SMTP_HOST = "vpce-0f5b358e20d5e0339-0wws8voj.email-smtp.us-east-1.vpce.amazonaws.com"
+    # !!! IMPORTANT: PASTE YOUR email-smtp ENDPOINT DNS NAME HERE !!!
+    SMTP_HOST = "vpce-00e1cf681534015f2-esdu3v59.email-smtp.us-east-1.vpce.amazonaws.com""
     SMTP_PORT = 465  # Use port 465 for SMTPS (SSL)
     
     SMTP_USER = secrets['smtp_user']
@@ -54,7 +55,6 @@ def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_da
     </body></html>
     """
 
-    # Create the email message
     msg = MIMEMultipart('alternative')
     msg['Subject'] = SUBJECT
     msg['From'] = f"{SENDER_NAME} <{SENDER_EMAIL}>"
