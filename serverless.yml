@@ -112,16 +112,3 @@ resources:
             # --- 3. Make the Role explicitly depend on the Queue ---
       DependsOn:
         - RenewalEmailQueue
-                  
-    SesVPCEndpoint:
-      Type: AWS::EC2::VPCEndpoint
-      Properties:
-        VpcId: vpc-009272e02ccd8b01b # <--- IMPORTANT: Add your VPC ID here
-        ServiceName: com.amazonaws.${self:provider.region}.email-smtp
-        VpcEndpointType: Interface
-        PrivateDnsEnabled: true
-        SubnetIds:
-          - subnet-0eef31249e595eca9
-          - subnet-0c28480ffa2575501
-        SecurityGroupIds:
-          - sg-0538cfedbe5d23eb5
