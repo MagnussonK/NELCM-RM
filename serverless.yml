@@ -112,3 +112,19 @@ resources:
             # --- 3. Make the Role explicitly depend on the Queue ---
       DependsOn:
         - RenewalEmailQueue
+        
+    SesApiVPCEndpoint:
+      Type: AWS::EC2::VPCEndpoint
+      Properties:
+        VpcId: vpc-009272e02ccd8b01b # Your VPC ID
+        # THIS IS THE CORRECT SERVICE NAME FOR THE BOTO3 API CLIENT
+        ServiceName: com.amazonaws.${self:provider.region}.ses
+        VpcEndpointType: Interface
+        PrivateDnsEnabled: true
+        SubnetIds:
+          # Use subnets that you verified are supported
+          - subnet-0e284d0f2a57f5501
+          - subnet-01ae22cae3a9c51f5
+        SecurityGroupIds:
+          # A security group that allows inbound HTTPS from the Lambda's SG
+          - sg-0538cfedbe5d23eb5
