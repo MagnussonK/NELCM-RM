@@ -3,6 +3,9 @@
 # Start from the official AWS Lambda base image for Python 3.9
 FROM public.ecr.aws/lambda/python:3.9
 
+ARG MTU_VALUE
+RUN echo $'{\n  "mtu":' ${MTU_VALUE} $'\n}' > /etc/docker/daemon.json
+
 # Set the working directory
 WORKDIR /var/task
 
