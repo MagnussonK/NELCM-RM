@@ -31,12 +31,14 @@ def get_secrets():
         logger.error(f"Failed to retrieve secret '{secret_name}': {e}")
         raise e
 
+# In email_sender.py
+
 def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_date):
-    """Sends the renewal email using smtplib via the VPC endpoint with full debugging."""
+    """Sends the renewal email using smtplib via the VPC endpoint using STARTTLS."""
     SENDER_NAME = "The Childrens Museum"
     SENDER_EMAIL = "nelcm98@gmail.com"
     SMTP_HOST = "vpce-0f5b358e20d5e0339-0wws8voj.email-smtp.us-east-1.vpce.amazonaws.com"
-    SMTP_PORT = 465
+    SMTP_PORT = 587  # Use port 587 for STARTTLS
 
     SMTP_USER = secrets.get('smtp_user')
     SMTP_PASS = secrets.get('smtp_password')
@@ -68,10 +70,13 @@ def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_da
 
     server = None
     try:
-        logger.info("Initializing SMTP_SSL client...")
-        server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10)
-        logger.info("Setting debug level to 1 to see SMTP conversation...")
+        logger.info("Initializing SMTP client...")
+        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10)
+        logger.info("Setting debug level to 1...")
         server.set_debuglevel(1)
+        
+        logger.info("Upgrading connection to TLS...")
+        server.starttls()
         
         logger.info("Attempting server.login()...")
         server.login(SMTP_USER, SMTP_PASS)
