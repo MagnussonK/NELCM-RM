@@ -65,13 +65,11 @@ functions:
 
 resources:
   Resources:
-    # --- 1. Define the SQS Queue First ---
     RenewalEmailQueue:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:service}-${sls:stage}-renewal-email-queue
 
-    # --- 2. Explicitly Define the IAM Role and its Permissions ---
     IamRoleLambdaExecution:
       Type: AWS::IAM::Role
       Properties:
@@ -85,7 +83,6 @@ resources:
                   - lambda.amazonaws.com
               Action: sts:AssumeRole
               
-        # This role needs basic permissions to run in a VPC and write logs
         ManagedPolicyArns:
           - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
         Policies:
@@ -109,22 +106,5 @@ resources:
                     - "sqs:DeleteMessage"
                     - "sqs:GetQueueAttributes"
                   Resource: !GetAtt RenewalEmailQueue.Arn
-            # --- 3. Make the Role explicitly depend on the Queue ---
-      DependsOn:
+        DependsOn:
         - RenewalEmailQueue
-        
-    SesApiVPCEndpoint:
-      Type: AWS::EC2::VPCEndpoint
-      Properties:
-        VpcId: vpc-009272e02ccd8b01b # Your VPC ID
-        # THIS IS THE CORRECT SERVICE NAME FOR THE BOTO3 API CLIENT
-        ServiceName: com.amazonaws.${self:provider.region}.ses
-        VpcEndpointType: Interface
-        PrivateDnsEnabled: true
-        SubnetIds:
-          # Use subnets that you verified are supported
-          - subnet-0e284d0f2a57f5501
-          - subnet-01ae22cae3a9c51f5
-        SecurityGroupIds:
-          # A security group that allows inbound HTTPS from the Lambda's SG
-          - sg-0538cfedbe5d23eb5

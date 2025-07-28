@@ -36,7 +36,7 @@ def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_da
     SENDER_NAME = "The Childrens Museum"
     SENDER_EMAIL = "nelcm98@gmail.com"
     # !!! IMPORTANT: PASTE YOUR email-smtp ENDPOINT DNS NAME HERE !!!
-    SMTP_HOST = "vpce-00e1cf681534015f2-esdu3v59.email-smtp.us-east-1.vpce.amazonaws.com""
+    SMTP_HOST = "vpce-00e1cf681534015f2-esdu3v59.email-smtp.us-east-1.vpce.amazonaws.com"
     SMTP_PORT = 465  # Use port 465 for SMTPS (SSL)
     
     SMTP_USER = secrets['smtp_user']
