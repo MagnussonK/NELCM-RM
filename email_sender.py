@@ -1,4 +1,4 @@
-# email_sender.py (Final Version using SMTPlib)
+# email_sender.py (with SMTP Debugging)
 import json
 import logging
 import pyodbc
@@ -32,16 +32,20 @@ def get_secrets():
         raise e
 
 def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_date):
-    """Sends the renewal email using smtplib via the VPC endpoint."""
+    """Sends the renewal email using smtplib via the VPC endpoint with full debugging."""
     SENDER_NAME = "The Childrens Museum"
     SENDER_EMAIL = "nelcm98@gmail.com"
     SMTP_HOST = "vpce-0f5b358e20d5e0339-0wws8voj.email-smtp.us-east-1.vpce.amazonaws.com"
-    SMTP_PORT = 465  # Use port 465 for SMTPS (SSL)
+    SMTP_PORT = 465
+
+    SMTP_USER = secrets.get('smtp_user')
+    SMTP_PASS = secrets.get('smtp_password')
+
+    if not SMTP_USER or not SMTP_PASS:
+        logger.error("SMTP username or password not found in secrets.")
+        return False
     
-    SMTP_USER = secrets['smtp_user']
-    SMTP_PASS = secrets['smtp_password']
-    
-    logger.info(f"Connecting to SMTP_HOST: '{SMTP_HOST}'")
+    logger.info(f"Connecting to SMTP_HOST: '{SMTP_HOST}' on port {SMTP_PORT}")
 
     SUBJECT = "Your Children's Museum Membership Is Expiring Soon!"
     BODY_HTML = f"""
@@ -62,18 +66,30 @@ def send_renewal_email_smtp(secrets, recipient_email, member_name, expiration_da
     msg['To'] = recipient_email
     msg.attach(MIMEText(BODY_HTML, 'html'))
 
+    server = None
     try:
-        logger.info(f"Attempting to send email to {recipient_email} via SMTP endpoint...")
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SENDER_EMAIL, [recipient_email], msg.as_string())
+        logger.info("Initializing SMTP_SSL client...")
+        server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10)
+        logger.info("Setting debug level to 1 to see SMTP conversation...")
+        server.set_debuglevel(1)
+        
+        logger.info("Attempting server.login()...")
+        server.login(SMTP_USER, SMTP_PASS)
+        logger.info("Login successful.")
+
+        logger.info("Attempting server.sendmail()...")
+        server.sendmail(SENDER_EMAIL, [recipient_email], msg.as_string())
         logger.info(f"Successfully sent email to {recipient_email}.")
         return True
     except Exception as e:
         logger.error(f"SMTP email failed to send to {recipient_email}: {e}")
         return False
+    finally:
+        if server:
+            logger.info("Closing SMTP server connection.")
+            server.quit()
 
-# --- Lambda Handler ---
+# --- Lambda Handler (No changes needed below this line) ---
 def handler(event, context):
     logger.info("Email sender handler started.")
     
