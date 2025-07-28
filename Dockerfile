@@ -9,7 +9,8 @@ WORKDIR /var/task
 # Install all system dependencies
 RUN yum update -y && \
     curl https://packages.microsoft.com/config/rhel/7/prod.repo | tee /etc/yum.repos.d/mssql-release.repo && \
-    ACCEPT_EULA=Y yum install -y msodbcsql18 unixODBC-devel krb5-libs
+    ACCEPT_EULA=Y yum install -y msodbcsql18 unixODBC-devel krb5-libs ca-certificates && \
+    update-ca-trust
 
 # Copy and install Python requirements directly into the working directory
 COPY requirements.txt .
