@@ -116,7 +116,7 @@ resources:
     SecretsManagerVPCEndpoint:
       Type: AWS::EC2::VPCEndpoint
       Properties:
-        VpcId: vpc-0123456789abcdef0 # <--- IMPORTANT: Add your VPC ID here
+        VpcId: vpc-009272e02ccd8b01b # <--- IMPORTANT: Add your VPC ID here
         ServiceName: com.amazonaws.${self:provider.region}.secretsmanager
         VpcEndpointType: Interface
         PrivateDnsEnabled: true
@@ -129,7 +129,7 @@ resources:
     SesVPCEndpoint:
       Type: AWS::EC2::VPCEndpoint
       Properties:
-        VpcId: vpc-0123456789abcdef0 # <--- IMPORTANT: Add your VPC ID here
+        VpcId: vpc-009272e02ccd8b01b # <--- IMPORTANT: Add your VPC ID here
         ServiceName: com.amazonaws.${self:provider.region}.ses
         VpcEndpointType: Interface
         PrivateDnsEnabled: true
@@ -142,7 +142,7 @@ resources:
     SqsVPCEndpoint:
       Type: AWS::EC2::VPCEndpoint
       Properties:
-        VpcId: vpc-0123456789abcdef0 # <--- IMPORTANT: Add your VPC ID here
+        VpcId: vpc-009272e02ccd8b01b # <--- IMPORTANT: Add your VPC ID here
         ServiceName: com.amazonaws.${self:provider.region}.sqs
         VpcEndpointType: Interface
         PrivateDnsEnabled: true
