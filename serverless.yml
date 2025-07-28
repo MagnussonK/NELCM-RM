@@ -106,5 +106,5 @@ resources:
                     - "sqs:DeleteMessage"
                     - "sqs:GetQueueAttributes"
                   Resource: !GetAtt RenewalEmailQueue.Arn
-        DependsOn:
+      DependsOn:
         - RenewalEmailQueue
