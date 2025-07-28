@@ -19,6 +19,8 @@ provider:
       appimage:
         path: ./
         platform: linux/amd64
+        buildArgs:
+          MTU_VALUE: 1300
   vpc:
     securityGroupIds:
       - sg-0538cfedbe5d23eb5
