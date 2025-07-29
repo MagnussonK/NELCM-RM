@@ -297,6 +297,13 @@ def add_record():
         data.get('email'), data.get('founding_family', False), mem_start_date, membership_expires, True, False)
         
         conn.commit()
+        email_details = {
+            "email_type": "welcome",
+            "email": data.get('email'),
+            "name": data.get('name'),
+            "last_name": data.get('last_name')
+        }
+        queue_email_to_sqs(email_details)
         return jsonify({"message": "Record added successfully!", "member_id": member_id}), 201
     except pyodbc.Error as ex:
         conn.rollback()
@@ -364,6 +371,14 @@ def update_record(member_id):
                 cursor.execute(query_family, tuple(family_params))
 
         conn.commit()
+        if is_primary and is_renewal:
+            email_details = {
+                "email_type": "renewal_thank_you",
+                "email": data.get('email'),
+                "name": data.get('name'),
+                "last_name": data.get('last_name')
+            }
+            queue_email_to_sqs(email_details)
 
         return jsonify({"message": "Record updated successfully!"}), 200
     except pyodbc.Error as ex:
