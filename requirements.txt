@@ -3,3 +3,4 @@ pyodbc
 Flask-Cors
 boto3
 serverless-wsgi
+reportlab
