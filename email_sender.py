@@ -5,35 +5,43 @@ import pyodbc
 import boto3
 from botocore.exceptions import ClientError
 from datetime import datetime
+import smtplib
+import ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 # --- Configuration & Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-def get_database_password():
-    secret_name = "nelcm-db"
-    region_name = "us-east-1"
+# --- AWS Configuration ---
+AWS_REGION = "us-east-1"
+SES_SMTP_HOST = "email-smtp.us-east-1.amazonaws.com"
+SES_SMTP_PORT = 465 # Port for SMTPS (SSL/TLS)
+
+def get_secret(secret_name):
+    """Generic function to retrieve a secret from AWS Secrets Manager."""
     session = boto3.session.Session()
-    client = session.client(service_name='secretsmanager', region_name=region_name)
+    client = session.client(service_name='secretsmanager', region_name=AWS_REGION)
     try:
         get_secret_value_response = client.get_secret_value(SecretId=secret_name)
         secret_string = get_secret_value_response['SecretString']
-        secret_data = json.loads(secret_string)
-        return secret_data['password']
+        return json.loads(secret_string)
     except ClientError as e:
         logger.error(f"Failed to retrieve secret '{secret_name}': {e}")
         raise e
 
 def get_db_connection():
+    """Establishes a connection to the SQL Server database."""
     try:
-        db_password = get_database_password()
+        db_secret = get_secret("nelcm-db")
         conn = pyodbc.connect(
             driver='/var/task/lib/libmsodbcsql-18.4.so.1.1',
             server='nelcm.cy1ogm8uwbvo.us-east-1.rds.amazonaws.com,1433',
             database='nelcm',
             uid='nelcm',
-            pwd=db_password,
+            pwd=db_secret['password'],
             Encrypt='yes',
             TrustServerCertificate='yes'
         )
@@ -42,12 +50,11 @@ def get_db_connection():
         logger.error(f"DATABASE CONNECTION FAILED: {ex}")
         return None
 
-def send_email(recipient_email, member_name, email_type, data={}):
+def send_email_smtp(recipient_email, member_name, email_type, data={}):
     """
-    Sends an email using AWS SES based on the specified email type.
+    Sends an email using the SMTP protocol over port 465.
     """
-    SENDER = "The Childrens Museum <nelcm98@gmail.com>"
-    AWS_REGION = "us-east-1"
+    SENDER_EMAIL = "The Childrens Museum <nelcm98@gmail.com>"
     SUBJECT = ""
     BODY_HTML = ""
 
@@ -99,25 +106,39 @@ def send_email(recipient_email, member_name, email_type, data={}):
         logger.error(f"Unknown email type: '{email_type}'. Cannot send email.")
         return False
 
-    # --- Send Email via SES ---
-    ses_client = boto3.client('ses', region_name=AWS_REGION)
+    # --- Get SMTP Credentials from the combined 'nelcm-db' secret ---
     try:
-        response = ses_client.send_email(
-            Source=SENDER,
-            Destination={'ToAddresses': [recipient_email]},
-            Message={
-                'Body': {'Html': {'Charset': "UTF-8", 'Data': BODY_HTML}},
-                'Subject': {'Charset': "UTF-8", 'Data': SUBJECT},
-            },
-            ConfigurationSetName='nelcm-transactional-config'
-        )
-        logger.info(f"Email ('{email_type}') sent successfully to {recipient_email}! Message ID: {response['MessageId']}")
-        return True
-    except ClientError as e:
-        logger.error(f"Email ('{email_type}') failed to send to {recipient_email}: {e.response['Error']['Message']}")
+        # Fetch the combined database secret
+        secret_data = get_secret("nelcm-db")
+        # Use the correct keys as shown in the screenshot
+        SMTP_USERNAME = secret_data['smtp_user']
+        SMTP_PASSWORD = secret_data['smtp_password']
+    except Exception as e:
+        logger.error(f"Could not retrieve SMTP credentials from Secrets Manager: {e}")
         return False
 
-# --- Lambda Handler ---
+    # --- Construct the Email Message ---
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = SUBJECT
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = recipient_email
+    msg.attach(MIMEText(BODY_HTML, 'html'))
+
+    # --- Send Email via SMTP_SSL ---
+    try:
+        context = ssl.create_default_context()
+        logger.info(f"Connecting to SMTP server {SES_SMTP_HOST} on port {SES_SMTP_PORT}...")
+        with smtplib.SMTP_SSL(SES_SMTP_HOST, SES_SMTP_PORT, context=context) as server:
+            logger.info("Connection successful. Logging in...")
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            logger.info("Login successful. Sending email...")
+            server.sendmail(SENDER_EMAIL, recipient_email, msg.as_string())
+            logger.info(f"Email ('{email_type}') sent successfully to {recipient_email} via SMTP.")
+        return True
+    except Exception as e:
+        logger.error(f"SMTP email failed to send to {recipient_email}: {e}")
+        return False
+
 def handler(event, context):
     """
     This handler is triggered by messages from the SQS queue.
@@ -148,40 +169,32 @@ def handler(event, context):
 
             email_data = {}
             if email_type == 'renewal_reminder':
-                # The date is a string, so convert it back to a date object
                 expires_str = message_body.get('expires')
                 if not expires_str:
                     logger.error("Renewal reminder is missing 'expires' date. Skipping.")
                     continue
                 email_data['expiration_date'] = datetime.strptime(expires_str, '%Y-%m-%d').date()
 
-            # 1. Send the appropriate email
-            email_sent = send_email(
+            # Call the SMTP email function
+            email_sent = send_email_smtp(
                 recipient_email=email,
                 member_name=f"{name} {last_name}",
                 email_type=email_type,
                 data=email_data
             )
 
-            # 2. If email sent, perform type-specific database actions
-            if email_sent:
-                if email_type == 'renewal_reminder':
-                    update_query = "UPDATE family SET renewal_email_sent = 1 WHERE member_id = ?"
-                    cursor.execute(update_query, member_id)
-                    conn.commit()
-                    logger.info(f"Successfully updated renewal_email_sent flag for member ID {member_id}.")
-                else:
-                    logger.info(f"Email type '{email_type}' sent for member {member_id}. No DB update needed.")
-            else:
-                logger.error(f"Skipping database actions for {member_id} because email failed to send.")
-
+            if email_sent and email_type == 'renewal_reminder':
+                update_query = "UPDATE family SET renewal_email_sent = 1 WHERE member_id = ?"
+                cursor.execute(update_query, member_id)
+                conn.commit()
+                logger.info(f"Successfully updated renewal_email_sent flag for member ID {member_id}.")
+            
         except Exception as e:
             logger.error(f"An error occurred processing a message: {e}")
-            conn.rollback()
-            # It's important to continue processing other messages in the batch
+            if conn:
+                conn.rollback()
             continue 
             
-    # Close the database connection after processing the batch
     cursor.close()
     conn.close()
 
