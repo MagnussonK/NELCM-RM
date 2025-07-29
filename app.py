@@ -360,16 +360,22 @@ def send_renewal_emails():
 
         messages_sent = 0
         for member in expiring_members:
-            member_id, email, name, last_name, expires = member
+            # Convert row to dictionary to access by name
+            member_dict = {
+                'member_id': member[0],
+                'email': member[1],
+                'name': member[2],
+                'last_name': member[3],
+                'expires': member[4]
+            }
             
-            # --- CODE CORRECTION: Use the helper function for consistency and safety ---
             email_details = {
                 'email_type': 'renewal_reminder',
-                'member_id': member_id,
-                'email': email,
-                'name': name,
-                'last_name': last_name,
-                'expires': expires.isoformat() if expires else None
+                'member_id': member_dict['member_id'],
+                'email': member_dict['email'],
+                'name': member_dict['name'],
+                'last_name': member_dict['last_name'],
+                'expires': member_dict['expires'].isoformat() if member_dict['expires'] else None
             }
             
             if queue_email_to_sqs(email_details):
@@ -387,9 +393,6 @@ def send_renewal_emails():
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
-
-# (The rest of your functions: /delete_record, /add_secondary_member, visit tracking, etc. can remain as they are)
-# ...
 
 @app.route('/api/delete_record/<member_id>', methods=['DELETE'])
 def delete_record(member_id):
