@@ -44,7 +44,6 @@ CORS(app)
 SQL_SERVER_INSTANCE = 'nelcm.cy1ogm8uwbvo.us-east-1.rds.amazonaws.com,1433'
 DATABASE_NAME = 'nelcm'
 DATABASE_UID = 'nelcm'
-#ODBC_DRIVER = '{ODBC Driver 18 for SQL Server}'
 ODBC_DRIVER = '/var/task/lib/libmsodbcsql-18.4.so.1.1'
 
 
@@ -143,7 +142,6 @@ def get_data():
         cursor.execute(query)
         
         columns = [column[0] for column in cursor.description]
-        # The CustomJSONProvider now handles data type conversion automatically.
         rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
         
         return jsonify(rows)
@@ -161,8 +159,6 @@ def get_data():
         if conn:
             conn.close()
 
-# (The rest of your functions: /update_expired_memberships, /add_record, etc. remain the same)
-# ... paste the rest of your endpoint functions here ...
 @app.route('/api/update_expired_memberships', methods=['PUT'])
 def update_expired_memberships():
     """
@@ -175,7 +171,6 @@ def update_expired_memberships():
     cursor = conn.cursor()
     try:
         today_str = date.today().strftime('%Y-%m-%d')
-        # This query now correctly targets the 'family' table and 'active_flag' column
         cursor.execute("""
             UPDATE family
             SET active_flag = 0
@@ -188,79 +183,6 @@ def update_expired_memberships():
     except pyodbc.Error as ex:
         sqlstate = ex.args[0]
         logging.error(f"Database error during expiry update: {sqlstate} - {ex}")
-        return jsonify({"error": f"Database error: {ex}"}), 500
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-
-@app.route('/api/family/<int:family_id>/renew', methods=['POST'])
-def renew_membership(family_id):
-    """Renews a family's membership from a new start date."""
-    data = request.get_json()
-    new_start_date_str = data.get('new_start_date')
-
-    if not new_start_date_str:
-        return jsonify({"error": "new_start_date is a required field"}), 400
-
-    try:
-        # Calculate new expiration date (1 year from the new start)
-        new_start_date = datetime.strptime(new_start_date_str, '%Y-%m-%d').date()
-        expiration_date = new_start_date.replace(year=new_start_date.year + 1)
-    except ValueError:
-        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
-
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "Database connection failed"}), 500
-
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE family SET membership_expires = ? WHERE member_id = ?",
-            expiration_date,
-            family_id
-        )
-        conn.commit()
-        logging.info(f"Membership for family ID {family_id} renewed. New expiration: {expiration_date.isoformat()}")
-        return jsonify({
-            "message": "Membership renewed successfully.",
-            "new_expiration_date": expiration_date.isoformat()
-        })
-    except pyodbc.Error as ex:
-        conn.rollback()
-        logging.error(f"Membership renewal failed for family ID {family_id}: {ex}")
-        return jsonify({"error": "Database error during membership renewal."}), 500
-    finally:
-        if conn:
-            conn.close()
-
-@app.route('/api/bulk_update_expiry_dates', methods=['PUT'])
-def bulk_update_expiry_dates():
-    """
-    Updates the membership_expires date for all non-founding members.
-    Sets it to the last day of the month, one year after the mem_start_date.
-    """
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "Database connection failed"}), 500
-
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            UPDATE family
-            SET membership_expires = EOMONTH(DATEADD(year, 1, mem_start_date))
-            WHERE mem_start_date IS NOT NULL AND founding_family = 0
-        """)
-        conn.commit()
-        updated_rows = cursor.rowcount
-        logging.info(f"Bulk updated membership_expires for {updated_rows} records.")
-        return jsonify({"message": f"Successfully updated membership expiration dates for {updated_rows} records."}), 200
-    except pyodbc.Error as ex:
-        conn.rollback()
-        sqlstate = ex.args[0]
-        logging.error(f"Database error during bulk expiry date update: {sqlstate} - {ex}")
         return jsonify({"error": f"Database error: {ex}"}), 500
     finally:
         if cursor:
@@ -287,10 +209,8 @@ def add_record():
         
         last_name_part = (last_name + '   ')[:3]
         first_name_part = (first_name + '  ')[:2]
-
         part1 = last_name_part[0].upper() + last_name_part[1:3].lower()
         part2 = first_name_part[0].upper() + first_name_part[1:].lower()
-        
         member_id = part1 + part2
 
         cursor.execute("SELECT COUNT(*) FROM members WHERE member_id = ?", member_id)
@@ -306,7 +226,6 @@ def add_record():
         data.get('birthday'), data.get('gender'), True, False)
 
         mem_start_date = date.today()
-        
         expiry_year = mem_start_date.year + 1
         expiry_month = mem_start_date.month
         _, last_day = calendar.monthrange(expiry_year, expiry_month)
@@ -377,17 +296,17 @@ def update_record(member_id):
             family_clauses = [f"{key} = ?" for key in data if key in family_keys]
             family_params = [data[key] for key in data if key in family_keys]
 
-            if 'mem_start_date' in data and data['mem_start_date']:
+            if is_renewal:
                 mem_start_date_str = data['mem_start_date']
                 mem_start_date = datetime.strptime(mem_start_date_str, '%Y-%m-%d').date()
-                
                 expiry_year = mem_start_date.year + 1
                 expiry_month = mem_start_date.month
                 _, last_day = calendar.monthrange(expiry_year, expiry_month)
                 membership_expires = date(expiry_year, expiry_month, last_day)
                 
                 family_clauses.extend(['mem_start_date = ?', 'membership_expires = ?', 'renewal_email_sent = ?'])
-                family_params.extend([mem_start_date, membership_expires, True])
+                # --- BUG FIX: renewal_email_sent should be set to False on renewal ---
+                family_params.extend([mem_start_date, membership_expires, False])
             
             if family_clauses:
                 family_params.append(member_id)
@@ -415,6 +334,62 @@ def update_record(member_id):
             cursor.close()
         if conn:
             conn.close()
+
+@app.route('/api/send_renewal_emails', methods=['POST'])
+def send_renewal_emails():
+    conn = get_db_connection()
+    if conn is None: return jsonify({"error": "Database connection failed"}), 500
+    cursor = conn.cursor()
+    
+    try:
+        today = date.today()
+        query = """
+            SELECT f.member_id, f.email, m.name, m.last_name, f.membership_expires
+            FROM family as f
+            LEFT JOIN members as m ON f.member_id = m.member_id AND m.primary_member = 1
+            WHERE 
+                f.founding_family = 0 AND f.active_flag = 1
+                AND MONTH(f.membership_expires) = ? AND YEAR(f.membership_expires) = ?
+                AND f.renewal_email_sent = 0
+        """
+        cursor.execute(query, today.month, today.year)
+        expiring_members = cursor.fetchall()
+
+        if not expiring_members:
+            return jsonify({"message": "No members found requiring a renewal email."}), 200
+
+        messages_sent = 0
+        for member in expiring_members:
+            member_id, email, name, last_name, expires = member
+            
+            # --- CODE CORRECTION: Use the helper function for consistency and safety ---
+            email_details = {
+                'email_type': 'renewal_reminder',
+                'member_id': member_id,
+                'email': email,
+                'name': name,
+                'last_name': last_name,
+                'expires': expires.isoformat() if expires else None
+            }
+            
+            if queue_email_to_sqs(email_details):
+                messages_sent += 1
+        
+        message = f"Process started. Successfully queued {messages_sent} renewal emails for sending."
+        return jsonify({"message": message, "queued_count": messages_sent}), 200
+        
+    except pyodbc.Error as ex:
+        logging.error(f"Database error during queuing of renewal emails: {ex.args[0]} - {ex}")
+        return jsonify({"error": f"Database error: {ex}"}), 500
+    except ClientError as e:
+        logging.error(f"SQS error during queuing of renewal emails: {e}")
+        return jsonify({"error": f"SQS error: {e}"}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+# (The rest of your functions: /delete_record, /add_secondary_member, visit tracking, etc. can remain as they are)
+# ...
 
 @app.route('/api/delete_record/<member_id>', methods=['DELETE'])
 def delete_record(member_id):
@@ -588,119 +563,5 @@ def get_today_visits():
         if conn:
             conn.close()
             
-def send_renewal_email_ses(recipient_email, member_name, expiration_date):
-    """
-    Sends a formatted renewal email using AWS SES.
-    """
-    SENDER = "The Childrens Museum <nelcm98@gmail.com>"
-    AWS_REGION = "us-east-1"
-    SUBJECT = "Your Children's Museum Membership Is Expiring Soon!"
-
-    BODY_HTML = f"""
-    <html>
-    <head></head>
-    <body style="font-family: Arial, sans-serif; color: #333;">
-      <h2>Time to Renew Your Membership!</h2>
-      <p>Dear {member_name},</p>
-      <p>
-        Thank you for being a valued member of The Children's Museum! We hope you've enjoyed a year of fun, learning, and discovery.
-      </p>
-      <p>
-        This is a friendly reminder that your family's membership is scheduled to expire on 
-        <b>{expiration_date.strftime('%B %d, %Y')}</b>.
-      </p>
-      <p>
-        Renewing is easy! Simply visit our front desk on your next visit to continue your adventure with us for another year.
-      </p>
-      <p>We look forward to seeing you again soon!</p>
-      <br>
-      <p>Sincerely,</p>
-      <p><b>The Children's Museum Team</b></p>
-    </body>
-    </html>
-    """
-
-    ses_client = boto3.client('ses', region_name=AWS_REGION)
-
-    try:
-        response = ses_client.send_email(
-            Source=SENDER,
-            Destination={'ToAddresses': [recipient_email]},
-            Message={
-                'Body': {'Html': {'Charset': "UTF-8", 'Data': BODY_HTML}},
-                'Subject': {'Charset': "UTF-8", 'Data': SUBJECT},
-            },
-            ConfigurationSetName='nelcm-transactional-config'
-        )
-    except ClientError as e:
-        logging.error(f"Email failed to send to {recipient_email}: {e.response['Error']['Message']}")
-        return False
-    else:
-        logging.info(f"Email sent successfully to {recipient_email}! Message ID: {response['MessageId']}")
-        return True
-
-@app.route('/api/send_renewal_emails', methods=['POST'])
-def send_renewal_emails():
-    conn = get_db_connection()
-    if conn is None: return jsonify({"error": "Database connection failed"}), 500
-    cursor = conn.cursor()
-    
-    sqs_queue_url = os.environ.get('SQS_QUEUE_URL')
-    if not sqs_queue_url:
-        return jsonify({"error": "SQS_QUEUE_URL environment variable not set."}), 500
-        
-    sqs = boto3.client('sqs')
-    
-    try:
-        today = date.today()
-        query = """
-            SELECT f.member_id, f.email, m.name, m.last_name, f.membership_expires
-            FROM family as f
-            LEFT JOIN members as m ON f.member_id = m.member_id AND m.primary_member = 1
-            WHERE 
-                f.founding_family = 0 AND f.active_flag = 1
-                AND MONTH(f.membership_expires) = ? AND YEAR(f.membership_expires) = ?
-                AND f.renewal_email_sent = 0
-        """
-        cursor.execute(query, today.month, today.year)
-        expiring_members = cursor.fetchall()
-
-        if not expiring_members:
-            return jsonify({"message": "No members found requiring a renewal email."}), 200
-
-        messages_sent = 0
-        for member in expiring_members:
-            member_id, email, name, last_name, expires = member
-            if not email:
-                logging.warning(f"Cannot queue renewal email for {name} {last_name}: No email on record.")
-                continue
-
-            message_body = json.dumps({
-                'member_id': member_id,
-                'email': email,
-                'name': name,
-                'last_name': last_name,
-                'expires': expires.isoformat()
-            })
-            
-            sqs.send_message(
-                QueueUrl=sqs_queue_url,
-                MessageBody=message_body
-            )
-            messages_sent += 1
-        
-        message = f"Process started. Successfully queued {messages_sent} renewal emails for sending."
-        return jsonify({"message": message, "queued_count": messages_sent}), 200
-        
-    except pyodbc.Error as ex:
-        logging.error(f"Database error during queuing of renewal emails: {ex.args[0]} - {ex}")
-        return jsonify({"error": f"Database error: {ex}"}), 500
-    except ClientError as e:
-        logging.error(f"SQS error during queuing of renewal emails: {e}")
-        return jsonify({"error": f"SQS error: {e}"}), 500
-    finally:
-        if cursor: cursor.close()
-        if conn: conn.close()
-
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', port = 5000, debug=True)
