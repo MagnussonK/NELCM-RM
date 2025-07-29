@@ -332,6 +332,7 @@ def update_record(member_id):
         original_name = data.get('original_name')
         original_last_name = data.get('original_last_name')
         is_primary = data.get('is_primary', False)
+        is_renewal = 'mem_start_date' in data and data['mem_start_date']
 
         where_clause = " WHERE member_id = ?"
         params = member_params
