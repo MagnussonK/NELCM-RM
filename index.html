@@ -47,6 +47,7 @@
         #manageSecondaryMembersView { max-width: 4xl; }
         #addVisitView { max-width: 3xl; } /* New view for adding visits */
         #memberVisitsView { max-width: 4xl; } /* New view for displaying member visits */
+        #accountManagementView { max-width: 3xl; } /* New view for account management */
 
 
         /* Form Group Styles */
@@ -66,6 +67,7 @@
         input[type="number"],
         input[type="date"],
         input[type="datetime-local"], /* Added for visit_datetime */
+        input[type="password"], /* Added for password fields */
         select,
         textarea {
             width: 100%;
@@ -82,6 +84,7 @@
         input[type="number"]:focus,
         input[type="date"]:focus,
         input[type="datetime-local"]:focus, /* Added for visit_datetime */
+        input[type="password"]:focus, /* Added for password fields */
         select:focus,
         textarea:focus {
             outline: none;
@@ -584,7 +587,7 @@
                 </div>
             </div>
 
-            <div class="mt-8 text-center flex justify-center items-center gap-4">
+            <div class="mt-8 text-center flex flex-wrap justify-center items-center gap-4">
                 <button
                     id="homeGenerateReportBtn"
                     class="bg-gradient-to-r from-purple-800 to-indigo-900 text-white py-3 px-8 rounded-full font-semibold text-lg
@@ -599,6 +602,13 @@
                            hover:from-blue-600 hover:to-teal-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                 >
                     Send Renewal Emails
+                </button>
+                <button
+                    id="manageAccountBtn"
+                    class="bg-gradient-to-r from-gray-700 to-gray-800 text-white py-3 px-8 rounded-full font-semibold text-lg
+                           hover:from-gray-800 hover:to-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-300 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                >
+                    Manage Account
                 </button>
             </div>
         </section>
@@ -971,6 +981,36 @@
                 <button type="button" id="memberVisitsCloseBtn" class="action-button btn-secondary">Close</button>
             </div>
         </section>
+        
+        <section id="accountManagementView" class="view-container hidden">
+            <h1 class="text-3xl font-extrabold text-center text-gray-900 mb-6">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-800 to-indigo-900">
+                    Manage Account Password
+                </span>
+            </h1>
+
+            <form id="accountManagementForm">
+                <div class="form-group">
+                    <label for="currentPassword">Current Database Password:</label>
+                    <input type="password" id="currentPassword" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="newPassword">New Database Password:</label>
+                    <input type="password" id="newPassword" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmNewPassword">Confirm New Password:</label>
+                    <input type="password" id="confirmNewPassword" required>
+                </div>
+                
+                <div class="action-buttons">
+                    <button type="submit" class="action-button btn-primary">Change Password</button>
+                    <button type="button" id="accountManagementCancelBtn" class="action-button btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </section>
 
     </div>
 	
@@ -1038,6 +1078,7 @@
         const manageSecondaryMembersView = document.getElementById('manageSecondaryMembersView');
         const addVisitView = document.getElementById('addVisitView'); // New
         const memberVisitsView = document.getElementById('memberVisitsView'); // New
+        const accountManagementView = document.getElementById('accountManagementView'); // New
         
         // --- UI Utility Functions ---
 
@@ -1067,7 +1108,7 @@
          * @param {string} viewId - The ID of the view to show (e.g., 'homeView', 'addRecordView').
          */
         function showView(viewId) {
-            const views = [homeView, addRecordView, familyDetailsView, recordDetailsView, manageSecondaryMembersView, addVisitView, memberVisitsView];
+            const views = [homeView, addRecordView, familyDetailsView, recordDetailsView, manageSecondaryMembersView, addVisitView, memberVisitsView, accountManagementView];
             views.forEach(view => {
                 if (view.id === viewId) {
                     view.classList.remove('hidden');
@@ -1230,8 +1271,8 @@
         const homeVisitsTodayCountSpan = document.getElementById('homeVisitsTodayCount');
         const homeGenerateReportBtn = document.getElementById('homeGenerateReportBtn');
         const showInactiveToggle = document.getElementById('showInactiveToggle');
-        // --- NEW: Get the new button ---
         const homeSendEmailsBtn = document.getElementById('homeSendEmailsBtn');
+        const manageAccountBtn = document.getElementById('manageAccountBtn');
 
 
         /**
@@ -1456,7 +1497,7 @@
             
             const today = new Date();
             today.setUTCHours(0, 0, 0, 0); 
-
+            // --- MODIFICATION: Get current month and year for comparison ---
             const todayMonth = today.getUTCMonth();
             const todayYear = today.getUTCFullYear();
 
@@ -1509,19 +1550,28 @@
                     if (header === 'info_status') {
                         cellClass = 'px-2 py-3 text-center flex items-center justify-center gap-2';
                         let statusIcons = '';
-
-                        // --- MODIFIED ICON LOGIC ---
-                        // If email has NOT been sent and it's not a founding family, show the new SVG icon
+                        
+                        // --- MODIFICATION: Added date check to the condition ---
+                        let showNoticeIcon = false;
                         if (!row.renewal_email_sent && !row.founding_family) {
-                            statusIcons += `<span title="Renewal notice has not been sent" class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-800">
+                            const expirationDate = parseDateRobustly(row.membership_expires);
+                            if (expirationDate) {
+                                const expirationMonth = expirationDate.getUTCMonth();
+                                const expirationYear = expirationDate.getUTCFullYear();
+                                if (expirationMonth === todayMonth && expirationYear === todayYear) {
+                                    showNoticeIcon = true;
+                                }
+                            }
+                        }
+
+                        if (showNoticeIcon) {
+                            statusIcons += `<span title="Renewal notice due this month" class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-800">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" style="stroke: #7f1d1d;"/>
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12" style="stroke: #ef4444;" />
                                                 </svg>
                                             </span>`;
                         }
-
-                        // If the record is missing contact info, show the warning icon
+                        
                         if (hasMissing) {
                             statusIcons += `<span title="Missing important information" class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-yellow-100 text-yellow-800">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1804,8 +1854,11 @@
             showView('addRecordView');
             resetAddRecordForm();
         });
-        // --- NEW: Add event listener for the new button ---
         homeSendEmailsBtn.addEventListener('click', sendRenewalEmails);
+        manageAccountBtn.addEventListener('click', () => {
+            showView('accountManagementView');
+            document.getElementById('accountManagementForm').reset();
+        });
         
         // --- Generate Member Report Functionality ---
         homeGenerateReportBtn.addEventListener('click', () => {
@@ -2693,6 +2746,59 @@
         });
 
         memberVisitsCloseBtn.addEventListener('click', () => showView('familyDetailsView'));
+        
+        // --- Account Management View Logic ---
+        const accountManagementForm = document.getElementById('accountManagementForm');
+        const accountManagementCancelBtn = document.getElementById('accountManagementCancelBtn');
+
+        accountManagementForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+            if (newPassword !== confirmNewPassword) {
+                showMessage('New passwords do not match.', 'error');
+                return;
+            }
+            if (newPassword.length < 8) {
+                showMessage('New password must be at least 8 characters long.', 'error');
+                return;
+            }
+
+            showLoadingIndicator();
+            try {
+                const response = await fetch(`${BASE_API_URL}/account/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmNewPassword
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP error! Status: ${response.status}`);
+                }
+
+                showMessage(result.message, 'success');
+                accountManagementForm.reset();
+                showView('homeView');
+
+            } catch (error) {
+                console.error('Error changing password:', error);
+                showMessage(`Failed to change password: ${error.message}`, 'error');
+            } finally {
+                hideLoadingIndicator();
+            }
+        });
+
+        accountManagementCancelBtn.addEventListener('click', () => {
+            showView('homeView');
+        });
+
 
         // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', async () => {
