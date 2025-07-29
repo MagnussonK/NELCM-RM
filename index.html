@@ -1169,7 +1169,7 @@
             dateString = dateString.trim();
             let date;
 
-            // Try parsing as pyridine-MM-dd first (from input type="date" or backend)
+            // Try parsing as yyyy-MM-dd first (from input type="date" or backend)
             if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
                 // This is already handled as UTC for consistency
                 const parts = dateString.split('-');
@@ -1206,7 +1206,7 @@
         }
 
         /**
-         * Formats a Date object into ISO 8601 pyridine-MM-dd for input[type="date"].
+         * Formats a Date object into ISO 8601 yyyy-MM-dd for input[type="date"].
          * @param {Date|null} dateObj - The Date object to format.
          * @returns {string} Formatted date string or empty string.
          */
@@ -1224,7 +1224,7 @@
         }
 
         /**
-         * Formats a Date object into ISO 8601 pyridine-MM-ddTHH:MM for input[type="datetime-local"].
+         * Formats a Date object into ISO 8601 yyyy-MM-ddTHH:MM for input[type="datetime-local"].
          * @param {Date|null} dateObj - The Date object to format.
          * @returns {string} Formatted datetime string or empty string.
          */
@@ -1382,10 +1382,7 @@
          * Fetches and displays the count of visits for today.
          */
         async function fetchVisitsTodayCount() {
-            // This is the correct URL for the API endpoint
-            			
             try {
-                // Use the same variable name here
                 const response = await fetch(`${BASE_API_URL}/visits/today/count`);
         
                 if (!response.ok) {
@@ -1412,7 +1409,6 @@
                 console.error('Error fetching visits today count:', error);
                 homeVisitsTodayCountSpan.textContent = `Visits Today: Error`;
         
-                // Also fix the variable name in the error message for accurate debugging
                 if (error.message.includes('404')) {
                     showMessage(`Failed to fetch today's visits: The backend endpoint was not found (404). Please ensure the API URL is correct.`, 'error');
                 } else {
@@ -1497,7 +1493,6 @@
             
             const today = new Date();
             today.setUTCHours(0, 0, 0, 0); 
-            // --- MODIFICATION: Get current month and year for comparison ---
             const todayMonth = today.getUTCMonth();
             const todayYear = today.getUTCFullYear();
 
@@ -1551,7 +1546,6 @@
                         cellClass = 'px-2 py-3 text-center flex items-center justify-center gap-2';
                         let statusIcons = '';
                         
-                        // --- MODIFICATION: Added date check to the condition ---
                         let showNoticeIcon = false;
                         if (!row.renewal_email_sent && !row.founding_family) {
                             const expirationDate = parseDateRobustly(row.membership_expires);
@@ -1812,7 +1806,6 @@
             }
         }
         
-        // --- NEW: Function to trigger renewal email sending ---
         /**
          * Calls the backend to initiate the sending of renewal emails.
          */
@@ -2058,22 +2051,11 @@
                 const result = await response.json();
                 showMessage(result.message || 'Record added successfully!', 'success');
                 
-                // --- MODIFIED WORKFLOW ---
-                // Set the current family ID from the response
                 currentFamilyId = result.member_id;
-                
-                // Refresh the master data list in the background
                 await fetchAllData();
-
-                // Reset the form for the next time it's used
                 resetAddRecordForm();
-
-                // Switch to the family details view
                 showView('familyDetailsView');
-                
-                // Render the details for the newly created family
                 await renderFamilyDetailsView();
-                // --- END MODIFICATION ---
 
             } catch (error) {
                 console.error('Error adding record:', error);
@@ -2210,13 +2192,16 @@
             updateMembershipBtn.disabled = true;
 
             try {
-                // When the button is clicked, always use the current date as the start date.
                 const newMemStartDateISO = new Date().toISOString().split('T')[0];
 
                 const updatedData = {
                     mem_start_date: newMemStartDateISO,
                     active_flag: true,
-                    is_primary: true // Ensure backend knows this is a primary member update
+                    is_primary: true,
+                    // --- FIX: Add the missing member details required by the backend ---
+                    email: primaryMemberRecord.email,
+                    name: primaryMemberRecord.name,
+                    last_name: primaryMemberRecord.last_name
                 };
 
                 const response = await fetch(`${BASE_API_URL}/update_record/${primaryMemberRecord.member_id}`, {
@@ -2337,7 +2322,6 @@
                     recordDetailsFoundingFamilyCheckbox.disabled = !isPrimary;
                     recordDetailsMemStartDateInput.disabled = !isPrimary;
                     
-                    // Allow editing expires date for primary, non-founding members
                     recordDetailsMembershipExpiresInput.disabled = true; // Always disabled
 
                     recordDetailsActiveFlagCheckbox.disabled = !isPrimary || record.founding_family;
