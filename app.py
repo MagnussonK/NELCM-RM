@@ -93,6 +93,29 @@ def get_db_connection():
         logging.error(f"An unexpected error occurred during DB connection: {e}")
         return None
 
+def queue_email_to_sqs(email_details):
+    """Helper function to send a message to the SQS queue."""
+    sqs_queue_url = os.environ.get('SQS_QUEUE_URL')
+    if not sqs_queue_url:
+        logging.error("SQS_QUEUE_URL environment variable not set. Cannot queue email.")
+        return False
+    
+    if not email_details.get('email'):
+        logging.warning(f"Cannot queue email for member {email_details.get('name')}: No email address provided.")
+        return False
+
+    try:
+        sqs = boto3.client('sqs')
+        sqs.send_message(
+            QueueUrl=sqs_queue_url,
+            MessageBody=json.dumps(email_details, default=str)
+        )
+        logging.info(f"Successfully queued '{email_details.get('email_type')}' email for {email_details.get('email')}")
+        return True
+    except ClientError as e:
+        logging.error(f"SQS error while queuing email: {e}")
+        return False
+
 # --- API Endpoints ---
 
 @app.route('/api/data', methods=['GET'])
