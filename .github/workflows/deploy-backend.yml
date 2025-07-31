@@ -11,6 +11,7 @@ on:
       - 'Dockerfile'
       - '.github/workflows/deploy-backend.yml'
       - 'odbcinst.ini'
+      - 'script.js'
 
 jobs:
   deploy-backend:
