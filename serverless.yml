@@ -34,7 +34,7 @@ functions:
     timeout: 5
     events:
       - httpApi:
-          path: /api/{proxy+}
+          path: api/{proxy+}
           method: any
 
   renewalEmailTrigger:
