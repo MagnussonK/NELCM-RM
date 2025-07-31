@@ -983,7 +983,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // --- Global Configuration ---
         
-		const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+		const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com';
 		
         // Global variables for Add Visit View
         let currentAddVisitMemberId = null;
@@ -1635,7 +1635,1101 @@ document.addEventListener('DOMContentLoaded', function() {
             homeRefreshSpinner.classList.remove('hidden');
         
             try {
-                const response = await 
+                const response = await fetch(`${BASE_API_URL}/data`);
+        
+                if (!response.ok) {
+                    let errorDetails = 'The server returned an error response.';
+                    try {
+                        // Safely attempt to parse the error response as JSON
+                        const errorData = await response.json();
+                        errorDetails = errorData.error || JSON.stringify(errorData);
+                    } catch (jsonError) {
+                        // If the response wasn't JSON, use the status text as a fallback
+                        errorDetails = response.statusText || 'Could not parse error response.';
+                    }
+                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorDetails}`);
+                }
+
+                allData = await response.json();
+                updateCounts(allData);
+                filterHomeData();
+                fetchVisitsTodayCount();
+                showMessage('Data fetched successfully!', 'success');
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showMessage(`Failed to fetch data: ${error.message}`, 'error');
+                homeDataResultsDiv.innerHTML = '<p class="text-center text-gray-500 py-4">Could not load data. Check console for details.</p>';
+                updateCounts([]);
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+                homeFetchDataBtn.disabled = false;
+                homeRefreshSpinner.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Handles the "Check-in Family" action.
+         * @param {string} familyId - The member_id (family ID) of the primary member.
+         */
+        async function checkInFamily(familyId) {
+            const numPeopleStr = prompt("Enter the number of people checking in for this family:");
+            const numPeople = parseInt(numPeopleStr);
+
+            if (isNaN(numPeople) || numPeople <= 0) {
+                showMessage("Invalid number of people. Please enter a positive number.", "error");
+                return;
+            }
+
+            globalLoadingIndicator.classList.remove('hidden');
+
+            try {
+                const primaryMember = allData.find(m => m.member_id === familyId && m.primary_member === true);
+
+                if (!primaryMember) {
+                    showMessage(`Primary member not found for family ID: ${familyId}. Cannot record visits.`, "error");
+                    return;
+                }
+				let successfulVisits = 0;
+                let failedVisits = 0;
+
+                for (let i = 0; i < numPeople; i++) {
+                    const now = new Date();
+                    const formattedDateTime = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+                    const visitData = {
+                        member_id: primaryMember.member_id,
+                        name: primaryMember.name,
+                        last_name: primaryMember.last_name,
+                        visit_datetime: formattedDateTime
+                    };
+
+                    const response = await fetch(`${BASE_API_URL}/add_visit`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(visitData)
+                    });
+
+                    if (response.ok) {
+                        successfulVisits++;
+                    } else {
+                        failedVisits++;
+                        const errorData = await response.json();
+                        console.error(`Error recording visit ${i + 1} for ${primaryMember.name} ${primaryMember.last_name}:`, errorData);
+                    }
+                }
+
+                if (successfulVisits === numPeople) {
+                    showMessage(`${successfulVisits} visits recorded successfully for ${primaryMember.name} ${primaryMember.last_name}!`, "success");
+                } else if (successfulVisits > 0) {
+                    showMessage(`${successfulVisits} out of ${numPeople} visits recorded for ${primaryMember.name} ${primaryMember.last_name}. ${failedVisits} failed.`, "warning");
+                } else {
+                    showMessage(`Failed to record any visits for ${primaryMember.name} ${primaryMember.last_name}.`, "error");
+                }
+
+                await fetchAllData();
+
+            } catch (error) {
+                console.error('Error during family check-in:', error);
+                showMessage(`An error occurred during check-in: ${error.message}`, "error");
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+            }
+        }
+        
+        /**
+         * Calls the backend to initiate the sending of renewal emails.
+         */
+        async function sendRenewalEmails() {
+            if (!confirm("Are you sure you want to run the monthly renewal email process? This will send emails to all members expiring this month who have not yet received a notice.")) {
+                return;
+            }
+
+            showLoadingIndicator();
+            try {
+                const response = await fetch(`${BASE_API_URL}/send_renewal_emails`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP error! Status: ${response.status}`);
+                }
+
+                showMessage(result.message, 'success');
+                await fetchAllData(); // Refresh the data to show the new mail icons
+
+            } catch (error) {
+                console.error('Error sending renewal emails:', error);
+                showMessage(`Failed to send renewal emails: ${error.message}`, 'error');
+            } finally {
+                hideLoadingIndicator();
+            }
+        }
+
+
+        // Home View Event Listeners
+        homeFetchDataBtn.addEventListener('click', fetchAllData);
+        homeLastNameSearchInput.addEventListener('input', filterHomeData);
+        showInactiveToggle.addEventListener('change', filterHomeData);
+        homeAddRecordBtn.addEventListener('click', () => {
+            showView('addRecordView');
+            resetAddRecordForm();
+        });
+        homeSendEmailsBtn.addEventListener('click', sendRenewalEmails);
+            showView('accountManagementView');
+            document.getElementById('accountManagementForm').reset();
+        });
+        
+        // --- Generate Member Report Functionality ---
+        homeGenerateReportBtn.addEventListener('click', () => {
+            if (!allData || allData.length === 0) {
+                showMessage('No data available to generate a report. Please fetch data first.', 'info');
+                return;
+            }
+
+            const reportHeaders = [
+                "Member ID", "First Name", "Last Name", "Phone", "Gender", "Birthday",
+                "Primary Member", "Secondary Member", "Address", "City", "State",
+                "Zip Code", "Email", "Founding Family", "Membership Start Date",
+                "Membership Expires", "Active"
+            ];
+
+            const keyMap = {
+                member_id: "Member ID",
+                name: "First Name",
+                last_name: "Last Name",
+                phone: "Phone",
+                gender: "Gender",
+                birthday: "Birthday",
+                primary_member: "Primary Member",
+                secondary_member: "Secondary Member",
+                address: "Address",
+                city: "City",
+                state: "State",
+                zip_code: "Zip Code",
+                email: "Email",
+                founding_family: "Founding Family",
+                mem_start_date: "Membership Start Date",
+                membership_expires: "Membership Expires",
+                active_flag: "Active"
+            };
+
+            let csvContent = reportHeaders.map(header => `"${header}"`).join(',') + '\n';
+
+            allData.forEach(row => {
+                const rowValues = reportHeaders.map(header => {
+                    const originalKey = Object.keys(keyMap).find(key => keyMap[key] === header);
+                    let value = row[originalKey];
+
+                    if (originalKey === 'founding_family' || originalKey === 'primary_member' || originalKey === 'secondary_member' || originalKey === 'active_flag') {
+                        value = value ? 'Yes' : 'No';
+                    } else if (originalKey === 'gender') {
+                        value = value === true ? 'Male' : (value === false ? 'Female' : 'N/A');
+                    } else if (originalKey === 'birthday' || originalKey === 'mem_start_date' || originalKey === 'membership_expires') {
+                        const dateObj = parseDateRobustly(value);
+                        value = formatDate(dateObj);
+                    } else if (originalKey === 'phone') {
+                        value = formatPhoneNumber(value);
+                    }
+                    
+                    if (value === null || value === undefined || String(value).trim() === '') {
+                        value = 'N/A';
+                    }
+
+                    const escapedValue = String(value).replace(/"/g, '""');
+                    return `"${escapedValue}"`;
+                });
+                csvContent += rowValues.join(',') + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'Member_Report.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showMessage('Member report generated and downloaded successfully!', 'success');
+            } else {
+                showMessage('Your browser does not support downloading files directly. Please copy the data manually.', 'error');
+            }
+        });
+
+
+        // --- Add Record View Logic ---
+        const addRecordForm = document.getElementById('addRecordForm');
+        const addNameInput = document.getElementById('addName');
+        const addLastNameInput = document.getElementById('addLastName');
+        const addEmailInput = document.getElementById('addEmail');
+        const addPhoneInput = document.getElementById('addPhone');
+        const addAddressInput = document.getElementById('addAddress');
+        const addCityInput = document.getElementById('addCity');
+        const addStateInput = document.getElementById('addState');
+        const addZipCodeInput = document.getElementById('addZipCode');
+        const addBirthdayInput = document.getElementById('addBirthday');
+        const addGenderSelect = document.getElementById('addGender');
+        const addFoundingFamilyCheckbox = document.getElementById('addFoundingFamily');
+        const addRecordHeader = document.getElementById('addRecordHeader');
+        const addFamilyMembersBtn = document.getElementById('addFamilyMembersBtn');
+        const addRecordCancelBtn = document.getElementById('addRecordCancelBtn');
+
+        function generatePreviewMemberId() {
+            const firstName = addNameInput.value.trim();
+            const lastName = addLastNameInput.value.trim();
+
+            if (!firstName || !lastName) {
+                return '';
+            }
+
+            const lastNamePart = (lastName + '   ').slice(0, 3);
+            const firstNamePart = (firstName + '  ').slice(0, 2);
+
+            const part1 = lastNamePart.charAt(0).toUpperCase() + lastNamePart.slice(1).toLowerCase();
+            const part2 = firstNamePart.charAt(0).toUpperCase() + firstNamePart.slice(1).toLowerCase();
+            
+            return part1 + part2;
+        }
+
+        function updateAddRecordHeaderWithMemberId() {
+            const previewId = generatePreviewMemberId();
+            if (previewId) {
+                addRecordHeader.innerHTML = `<span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-800 to-indigo-900">Add New Family Member: ${previewId}</span>`;
+            } else {
+                addRecordHeader.innerHTML = `<span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-800 to-indigo-900">Add New Member Record</span>`;
+            }
+        }
+
+        function resetAddRecordForm() {
+            addRecordForm.reset();
+            updateAddRecordHeaderWithMemberId();
+            addFamilyMembersBtn.classList.add('hidden');
+        }
+
+        addNameInput.addEventListener('input', updateAddRecordHeaderWithMemberId);
+        addLastNameInput.addEventListener('input', updateAddRecordHeaderWithMemberId);
+
+		addRecordForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            globalLoadingIndicator.classList.remove('hidden');
+            addRecordForm.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+
+            const name = addNameInput.value.trim();
+            const lastName = addLastNameInput.value.trim();
+            const email = addEmailInput.value.trim();
+            const phone = addPhoneInput.value.trim();
+            const address = addAddressInput.value.trim();
+            const city = addCityInput.value.trim();
+            const state = addStateInput.value.trim();
+            const zipCode = addZipCodeInput.value.trim();
+            const birthday = addBirthdayInput.value;
+            const gender = addGenderSelect.value;
+            const foundingFamily = addFoundingFamilyCheckbox.checked;
+            
+            const primaryMember = true;
+            const secondaryMember = false;
+
+            if (!name || !lastName) {
+                showMessage('Please fill in all required fields (First Name, Last Name).', 'error');
+                globalLoadingIndicator.classList.add('hidden');
+                addRecordForm.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+                return;
+            }
+
+            let genderValue = null;
+            if (gender === 'true') {
+                genderValue = true;
+            } else if (gender === 'false') {
+                genderValue = false;
+            }
+
+            const recordData = {
+                name: name,
+                last_name: lastName,
+                email: email || null,
+                phone: phone || null,
+                address: address || null,
+                city: city || null,
+                state: state || null,
+                zip_code: zipCode || null,
+                birthday: birthday || null,
+                gender: genderValue,
+                founding_family: foundingFamily,
+                primary_member: primaryMember,
+                secondary_member: secondaryMember
+            };
+            
+            try {
+					const response = await fetch(`${BASE_API_URL}/add_record`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(recordData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Add Primary Record Backend Error Response:', errorData);
+                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                }
+
+                const result = await response.json();
+                showMessage(result.message || 'Record added successfully!', 'success');
+                
+                currentFamilyId = result.member_id;
+                await fetchAllData();
+                resetAddRecordForm();
+                showView('familyDetailsView');
+                await renderFamilyDetailsView();
+
+            } catch (error) {
+                console.error('Error adding record:', error);
+                showMessage(`Failed to add record: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+                addRecordForm.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+            }
+        });
+		
+        addFamilyMembersBtn.addEventListener('click', () => {
+            if (currentFamilyId) {
+                showView('manageSecondaryMembersView');
+                document.getElementById('manageSecondaryFamilyIdDisplay').textContent = currentFamilyId;
+                fetchManageSecondaryMembers();
+                resetManageSecondaryAddForm();
+            } else {
+                showMessage('Please add a primary member first.', 'error');
+            }
+        });
+
+        addRecordCancelBtn.addEventListener('click', () => {
+            showView('homeView');
+            resetAddRecordForm();
+        });
+
+        // --- Family Details View Logic ---
+        const displayMemberId = document.getElementById('displayMemberId');
+        const familyAddress = document.getElementById('familyAddress');
+        const familyCityStateZip = document.getElementById('familyCityStateZip');
+        const familyMembershipExpires = document.getElementById('familyMembershipExpires');
+        const familyEmail = document.getElementById('familyEmail');
+        const updateMembershipContainer = document.getElementById('updateMembershipContainer');
+        const familyMemStartDateDisplay = document.getElementById('familyMemStartDateDisplay');
+        const updateMembershipBtn = document.getElementById('updateMembershipBtn');
+        const familyDetailsManageSecondaryMembersBtn = document.getElementById('familyDetailsManageSecondaryMembersBtn');
+        const familyDetailsCloseBtn = document.getElementById('familyDetailsCloseBtn');
+        const individualMembersList = document.getElementById('individualMembersList');
+
+        let primaryMemberRecord = null;
+
+        /**
+         * Renders the Family Details view based on the selected family ID.
+         */
+        async function renderFamilyDetailsView() {
+            showView('familyDetailsView');
+            globalLoadingIndicator.classList.remove('hidden');
+            familyDetailsContent.classList.add('hidden');
+            messageBox.classList.add('hidden');
+
+            if (!currentFamilyId) {
+                showMessage('No family selected. Please return to the main page and double-click a record.', 'error');
+                globalLoadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const familyMembers = allData.filter(member => member.member_id === currentFamilyId);
+
+                if (familyMembers.length > 0) {
+                    primaryMemberRecord = familyMembers.find(m => m.primary_member === true) || familyMembers[0];
+                    
+                    const memStartDateObj = parseDateRobustly(primaryMemberRecord.mem_start_date);
+                    const membershipExpiresObj = parseDateRobustly(primaryMemberRecord.membership_expires);
+
+                    displayMemberId.textContent = currentFamilyId;
+                    familyAddress.textContent = primaryMemberRecord.address || 'N/A';
+                    
+                    const city = primaryMemberRecord.city || '';
+                    const state = primaryMemberRecord.state || '';
+                    const zip = primaryMemberRecord.zip_code || '';
+                    familyCityStateZip.textContent = `${city}${city && state ? ', ' : ''}${state} ${zip}`.trim() || 'N/A';
+                    
+                    familyEmail.textContent = primaryMemberRecord.email || 'N/A';
+
+                    if (primaryMemberRecord.founding_family) {
+                        familyMembershipExpires.textContent = 'Founding Family';
+                        updateMembershipContainer.style.display = 'none';
+                    } else {
+                        familyMembershipExpires.textContent = formatDate(membershipExpiresObj);
+                        familyMemStartDateDisplay.textContent = formatDate(memStartDateObj);
+                        updateMembershipContainer.style.display = 'block';
+                    }
+
+                    individualMembersList.innerHTML = '';
+                    familyMembers.sort((a, b) => {
+                        if (a.primary_member && !b.primary_member) return -1;
+                        if (!a.primary_member && b.primary_member) return 1;
+                        return (a.last_name || '').localeCompare(b.last_name) || (a.name || '').localeCompare(b.name);
+                    });
+
+                    familyMembers.forEach(member => {
+                        let memberCardHtml = `
+                            <div class="member-card">
+                                <div class="member-card-header">
+                                    ${member.name || 'N/A'} ${member.last_name || 'N/A'}
+                                    ${member.primary_member ? '<span class="ml-2 text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded-full">Primary</span>' : ''}
+                                    ${member.secondary_member ? '<span class="ml-2 text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full">Secondary</span>' : ''}
+                                </div>
+                                <div class="member-card-details">
+                                    <div class="member-card-detail-item"><span class="member-card-detail-label">Birthday:</span><span class="member-card-detail-value">${formatDate(parseDateRobustly(member.birthday))}</span></div>
+                                    <div class="member-card-detail-item"><span class="member-card-detail-label">Gender:</span><span class="member-card-detail-value">${member.gender === true ? 'Male' : (member.gender === false ? 'Female' : 'N/A')}</span></div>
+                                    <div class="member-card-detail-item"><span class="member-card-detail-label">Phone:</span><span class="member-card-detail-value">${formatPhoneNumber(member.phone)}</span></div>
+                                </div>
+                                <div class="action-buttons">
+                                    <button onclick="editIndividualMember('${member.member_id}', '${member.name}', '${member.last_name}')" class="action-button btn-primary text-sm">View/Edit Member</button>
+                                    <button onclick="showAddVisitView('${member.member_id}', '${member.name}', '${member.last_name}')" class="action-button btn-primary text-sm bg-blue-500 hover:bg-blue-600">Add Visit</button>
+                                    <button onclick="showMemberVisits('${member.member_id}', '${member.name}', '${member.last_name}', '${primaryMemberRecord.mem_start_date}')" class="action-button btn-secondary text-sm">View Visits</button>
+                                </div>
+                            </div>`;
+                        individualMembersList.insertAdjacentHTML('beforeend', memberCardHtml);
+                    });
+                    familyDetailsContent.classList.remove('hidden');
+                } else {
+                    showMessage(`No members found for family ID: ${currentFamilyId}.`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Family Details View: Error rendering family data:', error);
+                showMessage(`Failed to load family data: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+            }
+        }
+
+        // Family Details View Event Listeners
+        updateMembershipBtn.addEventListener('click', async () => {
+            if (!primaryMemberRecord) {
+                showMessage('Error: Primary member record not found for updating membership.', 'error');
+                return;
+            }
+
+            globalLoadingIndicator.classList.remove('hidden');
+            updateMembershipBtn.disabled = true;
+
+            try {
+                const newMemStartDateISO = new Date().toISOString().split('T')[0];
+
+                const updatedData = {
+                    mem_start_date: newMemStartDateISO,
+                    active_flag: true,
+                    is_primary: true,
+                    // --- FIX: Add the missing member details required by the backend ---
+                    email: primaryMemberRecord.email,
+                    name: primaryMemberRecord.name,
+                    last_name: primaryMemberRecord.last_name
+                };
+
+                const response = await fetch(`${BASE_API_URL}/update_record/${primaryMemberRecord.member_id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                }
+
+                const result = await response.json();
+                showMessage(result.message || 'Membership dates and status updated successfully!', 'success');
+                
+                await fetchAllData();
+                renderFamilyDetailsView();
+
+            } catch (error) {
+                console.error('Error updating membership dates:', error);
+                showMessage(`Failed to update membership: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+                updateMembershipBtn.disabled = false;
+            }
+        });
+
+        familyDetailsManageSecondaryMembersBtn.addEventListener('click', () => {
+            if (currentFamilyId) {
+                showView('manageSecondaryMembersView');
+                document.getElementById('manageSecondaryFamilyIdDisplay').textContent = currentFamilyId;
+                fetchManageSecondaryMembers();
+                resetManageSecondaryAddForm();
+            } else {
+                showMessage('No family selected to manage secondary members.', 'error');
+            }
+        });
+
+        familyDetailsCloseBtn.addEventListener('click', () => {
+            showView('homeView');
+            currentFamilyId = null;
+        });
+
+        // --- Record Details View Logic (for individual member editing) ---
+        const recordDetailForm = document.getElementById('recordDetailForm');
+        const recordDetailsMemberIdDisplay = document.getElementById('recordDetailsMemberIdDisplay');
+        const recordDetailsNameInput = document.getElementById('recordDetailsName');
+        const recordDetailsLastNameInput = document.getElementById('recordDetailsLastName');
+        const recordDetailsEmailInput = document.getElementById('recordDetailsEmail');
+        const recordDetailsPhoneInput = document.getElementById('recordDetailsPhone');
+        const recordDetailsAddressInput = document.getElementById('recordDetailsAddress');
+        const recordDetailsCityInput = document.getElementById('recordDetailsCity');
+        const recordDetailsStateInput = document.getElementById('recordDetailsState');
+        const recordDetailsZipCodeInput = document.getElementById('recordDetailsZipCode');
+        const recordDetailsBirthdayInput = document.getElementById('recordDetailsBirthday');
+        const recordDetailsGenderSelect = document.getElementById('recordDetailsGender');
+        const recordDetailsFoundingFamilyCheckbox = document.getElementById('recordDetailsFoundingFamily');
+        const recordDetailsPrimaryMemberCheckbox = document.getElementById('recordDetailsPrimaryMember');
+        const recordDetailsSecondaryMemberCheckbox = document.getElementById('recordDetailsSecondaryMember');
+        const recordDetailsMemStartDateInput = document.getElementById('recordDetailsMemStartDate');
+        const recordDetailsMembershipExpiresContainer = document.getElementById('recordDetailsMembershipExpiresContainer');
+        const recordDetailsMembershipExpiresInput = document.getElementById('recordDetailsMembershipExpires');
+        const recordDetailsActiveFlagCheckbox = document.getElementById('recordDetailsActiveFlag');
+        const recordDetailsDeleteRecordBtn = document.getElementById('recordDetailsDeleteRecordBtn');
+        const recordDetailsCloseBtn = document.getElementById('recordDetailsCloseBtn');
+
+        let currentRecordDetailsFamilyId = null;
+        let currentRecordDetailsName = null;
+        let currentRecordDetailsLastName = null;
+        let currentRecordDetailsIsPrimary = false;
+
+        async function editIndividualMember(familyId, name, lastName) {
+            showView('recordDetailsView');
+            globalLoadingIndicator.classList.remove('hidden');
+            recordDetailForm.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+            messageBox.classList.add('hidden');
+
+            currentRecordDetailsFamilyId = familyId;
+            currentRecordDetailsName = name;
+            currentRecordDetailsLastName = lastName;
+
+            try {
+                const record = allData.find(item => item.member_id === familyId && item.name === name && item.last_name === lastName);
+
+                if (record) {
+                    currentRecordDetailsIsPrimary = record.primary_member;
+
+                    recordDetailsMemberIdDisplay.textContent = `${familyId} (${name} ${lastName})`;
+                    recordDetailsNameInput.value = record.name || '';
+                    recordDetailsLastNameInput.value = record.last_name || '';
+                    recordDetailsPhoneInput.value = record.phone || '';
+                    recordDetailsBirthdayInput.value = record.birthday ? formatDateForInput(parseDateRobustly(record.birthday)) : '';
+                    recordDetailsGenderSelect.value = record.gender !== null ? String(record.gender) : '';
+                    recordDetailsEmailInput.value = record.email || '';
+                    recordDetailsAddressInput.value = record.address || '';
+                    recordDetailsCityInput.value = record.city || '';
+                    recordDetailsStateInput.value = record.state || '';
+                    recordDetailsZipCodeInput.value = record.zip_code || '';
+                    recordDetailsFoundingFamilyCheckbox.checked = record.founding_family || false;
+                    recordDetailsMemStartDateInput.value = record.mem_start_date ? formatDateForInput(parseDateRobustly(record.mem_start_date)) : '';
+                    recordDetailsMembershipExpiresInput.value = record.membership_expires ? formatDateForInput(parseDateRobustly(record.membership_expires)) : '';
+                    recordDetailsActiveFlagCheckbox.checked = record.active_flag || false;
+                    recordDetailsPrimaryMemberCheckbox.checked = record.primary_member || false;
+                    recordDetailsSecondaryMemberCheckbox.checked = record.secondary_member || false;
+
+                    const isPrimary = record.primary_member;
+                    recordDetailsNameInput.disabled = false;
+                    recordDetailsLastNameInput.disabled = false;
+                    recordDetailsPhoneInput.disabled = false;
+                    recordDetailsBirthdayInput.disabled = false;
+                    recordDetailsGenderSelect.disabled = false;
+                    recordDetailsEmailInput.disabled = !isPrimary;
+                    recordDetailsAddressInput.disabled = !isPrimary;
+                    recordDetailsCityInput.disabled = !isPrimary;
+                    recordDetailsStateInput.disabled = !isPrimary;
+                    recordDetailsZipCodeInput.disabled = !isPrimary;
+                    recordDetailsFoundingFamilyCheckbox.disabled = !isPrimary;
+                    recordDetailsMemStartDateInput.disabled = !isPrimary;
+                    
+                    recordDetailsMembershipExpiresInput.disabled = true; // Always disabled
+
+                    recordDetailsActiveFlagCheckbox.disabled = !isPrimary || record.founding_family;
+
+                    if (record.founding_family) {
+                        recordDetailsMembershipExpiresContainer.style.display = 'none';
+                    } else {
+                        recordDetailsMembershipExpiresContainer.style.display = 'block';
+                    }
+
+                    recordDetailForm.querySelector('button[type="submit"]').disabled = false;
+                    recordDetailsDeleteRecordBtn.disabled = false;
+                    recordDetailsCloseBtn.disabled = false;
+                } else {
+                    showMessage('Record not found for the given ID, Name, and Last Name.', 'error');
+                }
+            } catch (error) {
+                console.error('Error preparing record details view:', error);
+                showMessage(`Failed to load record: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+                recordDetailsCloseBtn.disabled = false;
+            }
+        }
+
+        recordDetailForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (!currentRecordDetailsFamilyId) {
+                showMessage('No record selected for update.', 'error');
+                return;
+            }
+
+            globalLoadingIndicator.classList.remove('hidden');
+            recordDetailForm.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+
+            const recordData = {
+                name: recordDetailsNameInput.value.trim(),
+                last_name: recordDetailsLastNameInput.value.trim(),
+                phone: recordDetailsPhoneInput.value.trim() || null,
+                birthday: recordDetailsBirthdayInput.value || null,
+                gender: recordDetailsGenderSelect.value !== '' ? (recordDetailsGenderSelect.value === 'true') : null,
+                original_name: currentRecordDetailsName,
+                original_last_name: currentRecordDetailsLastName,
+                is_primary: currentRecordDetailsIsPrimary
+            };
+
+            if (currentRecordDetailsIsPrimary) {
+                recordData.email = recordDetailsEmailInput.value.trim() || null;
+                recordData.address = recordDetailsAddressInput.value.trim() || null;
+                recordData.city = recordDetailsCityInput.value.trim() || null;
+                recordData.state = recordDetailsStateInput.value.trim() || null;
+                recordData.zip_code = recordDetailsZipCodeInput.value.trim() || null;
+                recordData.founding_family = recordDetailsFoundingFamilyCheckbox.checked;
+                recordData.mem_start_date = recordDetailsMemStartDateInput.value || null;
+                recordData.active_flag = recordDetailsActiveFlagCheckbox.checked;
+            }
+
+            try {
+                const response = await fetch(`${BASE_API_URL}/update_record/${currentRecordDetailsFamilyId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(recordData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                }
+
+                const result = await response.json();
+                showMessage(result.message || 'Record updated successfully!', 'success');
+                
+                await fetchAllData(); 
+                showView('familyDetailsView');
+                await renderFamilyDetailsView();
+
+            } catch (error) {
+                console.error('Error updating record:', error);
+                showMessage(`Failed to update record: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+                recordDetailForm.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+            }
+        });
+
+        recordDetailsDeleteRecordBtn.addEventListener('click', async () => {
+            if (!currentRecordDetailsFamilyId) return;
+
+            let confirmMessage = currentRecordDetailsIsPrimary
+                ? `Are you sure you want to delete the PRIMARY member and ALL associated family members for Family ID: ${currentRecordDetailsFamilyId}? This action cannot be undone.`
+                : `Are you sure you want to delete ${currentRecordDetailsName} ${currentRecordDetailsLastName} from Family ID: ${currentRecordDetailsFamilyId}?`;
+            
+            if (confirm(confirmMessage)) {
+                globalLoadingIndicator.classList.remove('hidden');
+                const requestBody = currentRecordDetailsIsPrimary ? {} : { name: currentRecordDetailsName, last_name: currentRecordDetailsLastName };
+                try {
+                    const response = await fetch(`${BASE_API_URL}/delete_record/${currentRecordDetailsFamilyId}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json();
+                    showMessage(result.message || 'Record deleted successfully!', 'success');
+                    
+                    await fetchAllData();
+                    if (currentRecordDetailsIsPrimary) {
+                        showView('homeView');
+                        currentFamilyId = null;
+                    } else {
+                        showView('familyDetailsView');
+                        await renderFamilyDetailsView();
+                    }
+                } catch (error) {
+                    console.error('Error deleting record:', error);
+                    showMessage(`Failed to delete record: ${error.message}`, 'error');
+                } finally {
+                    globalLoadingIndicator.classList.add('hidden');
+                }
+            }
+        });
+
+        recordDetailsCloseBtn.addEventListener('click', () => {
+            showView('familyDetailsView');
+        });
+
+        // --- Manage Secondary Members View Logic ---
+        const manageSecondaryFamilyIdDisplay = document.getElementById('manageSecondaryFamilyIdDisplay');
+        const manageSecondaryMembersTableBody = document.getElementById('manageSecondaryMembersTableBody');
+        const manageSecondaryAddForm = document.getElementById('manageSecondaryAddForm');
+        const manageSecondaryCloseBtn = document.getElementById('manageSecondaryCloseBtn');
+
+        async function fetchManageSecondaryMembers() {
+            if (!currentFamilyId) return;
+            globalLoadingIndicator.classList.remove('hidden');
+
+            try {
+                const familyMembers = allData.filter(member => member.member_id === currentFamilyId);
+                if (familyMembers.length === 0) {
+                    manageSecondaryMembersTableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No family members found.</td></tr>';
+                    return;
+                }
+
+                familyMembers.sort((a, b) => {
+                    if (a.primary_member && !b.primary_member) return -1;
+                    if (!a.primary_member && b.primary_member) return 1;
+                    return (a.last_name || '').localeCompare(b.last_name) || (a.name || '').localeCompare(b.name);
+                });
+
+                let tableHtml = '';
+                familyMembers.forEach(member => {
+                    const role = member.primary_member ? 'Primary' : 'Secondary';
+                    tableHtml += `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">${member.name || 'N/A'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${member.last_name || 'N/A'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${role}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                ${!member.primary_member ? `<button type="button" onclick="deleteSecondaryMember('${member.member_id}', '${member.name}', '${member.last_name}')" class="delete-secondary-member-btn action-button btn-delete text-xs px-3 py-1">Delete</button>` : 'N/A'}
+                            </td>
+                        </tr>`;
+                });
+                manageSecondaryMembersTableBody.innerHTML = tableHtml;
+            } catch (error) {
+                console.error('Error rendering secondary members list:', error);
+                showMessage('Failed to display family members.', 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+            }
+        }
+
+        async function deleteSecondaryMember(memberId, name, lastName) {
+            if (confirm(`Are you sure you want to delete ${name} ${lastName} from this family?`)) {
+                globalLoadingIndicator.classList.remove('hidden');
+                try {
+                    const response = await fetch(`${BASE_API_URL}/delete_record/${memberId}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name, last_name: lastName })
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                    }
+                    const result = await response.json();
+                    showMessage(result.message || 'Secondary member deleted successfully!', 'success');
+                    await fetchAllData();
+                    await fetchManageSecondaryMembers();
+                } catch (error) {
+                    console.error('Error deleting secondary member:', error);
+                    showMessage(`Failed to delete secondary member: ${error.message}`, 'error');
+                } finally {
+                    globalLoadingIndicator.classList.add('hidden');
+                }
+            }
+        }
+
+        function resetManageSecondaryAddForm() {
+            manageSecondaryAddForm.reset();
+        }
+
+        manageSecondaryAddForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!currentFamilyId) return;
+
+            globalLoadingIndicator.classList.remove('hidden');
+            const name = document.getElementById('manageSecondaryName').value.trim();
+            const lastName = document.getElementById('manageSecondaryLastName').value.trim();
+            if (!name || !lastName) {
+                showMessage('Please fill in First Name and Last Name.', 'error');
+                globalLoadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            const gender = document.getElementById('manageSecondaryGender').value;
+            let genderValue = gender !== '' ? (gender === 'true') : null;
+
+            const recordData = {
+                primary_member_id: currentFamilyId,
+                name: name,
+                last_name: lastName,
+                phone: document.getElementById('manageSecondaryPhone').value.trim() || null,
+                birthday: document.getElementById('manageSecondaryBirthday').value || null,
+                gender: genderValue,
+            };
+            try {
+                const response = await fetch(`${BASE_API_URL}/add_secondary_member`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(recordData)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                }
+                const result = await response.json();
+                showMessage(result.message || 'Secondary member added successfully!', 'success');
+                resetManageSecondaryAddForm();
+                await fetchAllData();
+                fetchManageSecondaryMembers();
+            } catch (error) {
+                console.error('Error adding secondary member:', error);
+                showMessage(`Failed to add secondary member: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+            }
+        });
+
+        manageSecondaryCloseBtn.addEventListener('click', () => {
+            showView('familyDetailsView');
+            renderFamilyDetailsView(); // Re-render the family details view
+        });
+
+        // --- Add Visit View Logic & Member Visits View Logic ---
+        const addVisitForm = document.getElementById('addVisitForm');
+        const addVisitMemberIdInput = document.getElementById('addVisitMemberId');
+        const addVisitNameInput = document.getElementById('addVisitName');
+        const addVisitLastNameInput = document.getElementById('addVisitLastName');
+        const addVisitDateTimeInput = document.getElementById('addVisitDateTime');
+        const addVisitCancelBtn = document.getElementById('addVisitCancelBtn');
+        const memberVisitsDisplayName = document.getElementById('memberVisitsDisplayName');
+        const memberVisitsDisplayId = document.getElementById('memberVisitsDisplayId');
+        const visitsSinceMembershipCount = document.getElementById('visitsSinceMembershipCount');
+        const currentMonthYearSpan = document.getElementById('currentMonthYear');
+        const prevMonthBtn = document.getElementById('prevMonthBtn');
+        const nextMonthBtn = document.getElementById('nextMonthBtn');
+        const calendarDaysDiv = document.getElementById('calendarDays');
+        const allOtherVisitsContainer = document.getElementById('allOtherVisitsContainer');
+        const memberVisitsCloseBtn = document.getElementById('memberVisitsCloseBtn');
+        
+        function showAddVisitView(memberId, name, lastName) {
+            showView('addVisitView');
+            currentAddVisitMemberId = memberId;
+            currentAddVisitName = name;
+            currentAddVisitLastName = lastName;
+            addVisitMemberIdInput.value = memberId;
+            addVisitNameInput.value = name;
+            addVisitLastNameInput.value = lastName;
+            addVisitDateTimeInput.value = formatDateTimeLocalForInput(new Date());
+        }
+
+        addVisitForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            globalLoadingIndicator.classList.remove('hidden');
+            const localDate = new Date(addVisitDateTimeInput.value);
+            const formattedDateTime = `${localDate.getFullYear()}-${(localDate.getMonth() + 1).toString().padStart(2, '0')}-${localDate.getDate().toString().padStart(2, '0')} ${localDate.getHours().toString().padStart(2, '0')}:${localDate.getMinutes().toString().padStart(2, '0')}:${localDate.getSeconds().toString().padStart(2, '0')}`;
+            const visitData = {
+                member_id: currentAddVisitMemberId,
+                name: currentAddVisitName,
+                last_name: currentAddVisitLastName,
+                visit_datetime: formattedDateTime
+            };
+            try {
+                const response = await fetch(`${BASE_API_URL}/add_visit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(visitData)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                }
+                const result = await response.json();
+                showMessage(result.message || 'Visit recorded successfully!', 'success');
+                await fetchAllData();
+                showView('familyDetailsView');
+            } catch (error) {
+                console.error('Error recording visit:', error);
+                showMessage(`Failed to record visit: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+            }
+        });
+        
+        addVisitCancelBtn.addEventListener('click', () => showView('familyDetailsView'));
+
+        function renderCalendar(year, month, visitedDates) {
+            const today = new Date();
+            const firstDayOfMonth = new Date(year, month, 1);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstWeekday = firstDayOfMonth.getDay();
+
+            currentMonthYearSpan.textContent = `${firstDayOfMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}`;
+            calendarDaysDiv.innerHTML = '';
+
+            const isVisited = (day) => {
+                const checkDate = new Date(year, month, day);
+                return visitedDates.some(vDate => vDate.getFullYear() === checkDate.getFullYear() && vDate.getMonth() === checkDate.getMonth() && vDate.getDate() === checkDate.getDate());
+            };
+
+            for (let i = 0; i < firstWeekday; i++) {
+                calendarDaysDiv.insertAdjacentHTML('beforeend', '<div class="calendar-day empty"></div>');
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.classList.add('calendar-day');
+                dayDiv.textContent = day;
+                const calendarDay = new Date(year, month, day);
+                if (calendarDay.toDateString() === today.toDateString()) {
+                    dayDiv.classList.add('current-day');
+                }
+                if (isVisited(day)) {
+                    dayDiv.classList.add('visited-day');
+                }
+                calendarDaysDiv.appendChild(dayDiv);
+            }
+        }
+
+        async function showMemberVisits(memberId, name, lastName, memStartDateISO) {
+            showView('memberVisitsView');
+            globalLoadingIndicator.classList.remove('hidden');
+            memberVisitsDisplayName.textContent = `${name} ${lastName}`;
+            memberVisitsDisplayId.textContent = memberId;
+            visitsSinceMembershipCount.textContent = 'Loading...';
+            allOtherVisitsContainer.innerHTML = '<p class="text-gray-600 text-center py-4">Loading visits...</p>';
+            
+            currentVisitsMemStartDate = parseDateRobustly(memStartDateISO);
+            currentCalendarDate = new Date();
+
+            try {
+                const response = await fetch(`${BASE_API_URL}/visits/${encodeURIComponent(memberId)}/${encodeURIComponent(name)}/${encodeURIComponent(lastName)}`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+                }
+                const visits = await response.json();
+                allMemberVisitedDates = visits.map(v => new Date(v));
+                
+                visitsSinceMembershipCount.textContent = currentVisitsMemStartDate
+                    ? allMemberVisitedDates.filter(vDate => vDate >= currentVisitsMemStartDate).length
+                    : allMemberVisitedDates.length;
+                
+                renderCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), allMemberVisitedDates);
+                
+                allOtherVisitsContainer.innerHTML = '';
+                if (allMemberVisitedDates.length > 0) {
+                    allMemberVisitedDates.sort((a,b) => b - a).forEach((visitDate, index) => {
+                        allOtherVisitsContainer.innerHTML += `<p><strong>Visit ${allMemberVisitedDates.length - index}:</strong> ${formatDate(visitDate)} ${visitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>`;
+                    });
+                } else {
+                    allOtherVisitsContainer.innerHTML = '<p class="text-gray-600 text-center py-4">No visits to display.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching member visits:', error);
+                showMessage(`Failed to load visit history: ${error.message}`, 'error');
+            } finally {
+                globalLoadingIndicator.classList.add('hidden');
+            }
+        }
+
+        prevMonthBtn.addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+            renderCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), allMemberVisitedDates);
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+            renderCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), allMemberVisitedDates);
+        });
+
+        memberVisitsCloseBtn.addEventListener('click', () => showView('familyDetailsView'));
+        
+        // --- Account Management View Logic ---
+        const accountManagementForm = document.getElementById('accountManagementForm');
+        const accountManagementCancelBtn = document.getElementById('accountManagementCancelBtn');
+
+        accountManagementForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+            if (newPassword !== confirmNewPassword) {
+                showMessage('New passwords do not match.', 'error');
+                return;
+            }
+            if (newPassword.length < 8) {
+                showMessage('New password must be at least 8 characters long.', 'error');
+                return;
+            }
+
+            showLoadingIndicator();
+            try {
+                const response = await fetch(`${BASE_API_URL}/account/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmNewPassword
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP error! Status: ${response.status}`);
+                }
+
+                showMessage(result.message, 'success');
+                accountManagementForm.reset();
+                showView('homeView');
+
+            } catch (error) {
+                console.error('Error changing password:', error);
+                showMessage(`Failed to change password: ${error.message}`, 'error');
+            } finally {
+                hideLoadingIndicator();
+            }
+        });
+
+        accountManagementCancelBtn.addEventListener('click', () => {
+            showView('homeView');
+        });
+
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchAllData();
+            showView('homeView');
+        });
+
+        // Expose functions to global scope for onclick attributes
+        window.editIndividualMember = editIndividualMember;
+        window.showAddVisitView = showAddVisitView;
+        window.showMemberVisits = showMemberVisits;
+        window.checkInFamily = checkInFamily;
+        window.deleteSecondaryMember = deleteSecondaryMember;
+
+<script>
+const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+
 fetch(`${BASE_API_URL}/data`)
   .then(response => {
     if (!response.ok) {
@@ -1668,4 +2762,7 @@ fetch(`${BASE_API_URL}/data`)
       tbody.innerHTML = '<tr><td colspan="5">Error loading data</td></tr>';
     }
   });
->
+</script>
+
+</body>
+</html>
