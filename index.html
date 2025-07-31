@@ -569,9 +569,24 @@ input:focus, select:focus, textarea:focus {
 </div>
 <div class="mt-8 bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-inner overflow-x-auto max-h-96" id="homeResultsContainer">
 <h2 class="text-xl font-bold text-gray-800 mb-4">Current Records:</h2>
+
 <div class="bg-white rounded-lg text-gray-800 text-sm overflow-hidden" id="homeDataResults">
-<p class="text-center text-gray-500 py-4">Loading data...</p>
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead>
+      <tr>
+        <th class="px-6 py-3">Member ID</th>
+        <th class="px-6 py-3">Name</th>
+        <th class="px-6 py-3">Email</th>
+        <th class="px-6 py-3">Membership Expires</th>
+        <th class="px-6 py-3">Status</th>
+      </tr>
+    </thead>
+    <tbody id="recordsTableBody" class="divide-y divide-gray-200 bg-white">
+      <tr><td colspan="5" class="text-center py-4 text-gray-500">Loading data...</td></tr>
+    </tbody>
+  </table>
 </div>
+
 </div>
 <div class="mt-8 p-4 bg-gray-100 rounded-lg border border-gray-200 text-center text-gray-700 font-semibold flex flex-col sm:flex-row justify-around items-center space-y-2 sm:space-y-0">
 <div class="flex items-center space-x-2">
