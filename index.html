@@ -972,7 +972,6 @@ input:focus, select:focus, textarea:focus {
 </div>
 </div>
 <script>
-
 document.addEventListener('DOMContentLoaded', function() {
 // --- Global Variables and Utility Functions ---
         let allData = []; // Stores all data fetched from the backend
@@ -984,7 +983,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // --- Global Configuration ---
         
-		// const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+		const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
 		
         // Global variables for Add Visit View
         let currentAddVisitMemberId = null;
@@ -2727,6 +2726,48 @@ document.addEventListener('DOMContentLoaded', function() {
         window.showMemberVisits = showMemberVisits;
         window.checkInFamily = checkInFamily;
         window.deleteSecondaryMember = deleteSecondaryMember;
-<script src="script.js"></script>
+
+<script>
+const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+
+fetch(`${BASE_API_URL}/data`)
+  .then(async (response) => {
+    const contentType = response.headers.get("content-type");
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      throw new Error("Expected JSON but got HTML:\n" + text.substring(0, 300));
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log("Rendering records...", data);
+    const tbody = document.querySelector('#recordsTable tbody');
+    if (!tbody) {
+      console.error("Could not find #recordsTable tbody");
+      return;
+    }
+
+    tbody.innerHTML = data.map(record => \`
+      <tr>
+        <td>\${record.member_id}</td>
+        <td>\${record.name} \${record.last_name}</td>
+        <td>\${record.email || ''}</td>
+        <td>\${record.membership_expires || ''}</td>
+        <td>\${record.active_flag ? 'Active' : 'Inactive'}</td>
+      </tr>
+    \`).join('');
+  })
+  .catch(error => {
+    console.error("Data load failed:", error);
+    const tbody = document.querySelector('#recordsTable tbody');
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="5">Error loading data</td></tr>`;
+    }
+  });
+</script>
+
 </body>
 </html>
