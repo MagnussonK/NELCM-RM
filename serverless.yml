@@ -44,6 +44,13 @@ functions:
         - renewal_trigger.handler
     events:
       - schedule: cron(0 12 1 * ? *)
+      
+  renewalMailer:
+    handler: renewal_trigger.handler
+    events:
+      - http:
+          path: renewals/run
+          method: post
 
   sesHandler:
     image:
