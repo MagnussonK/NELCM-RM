@@ -2769,5 +2769,53 @@ fetch(BASE_API_URL + '/data')
   });
 </script>
 
+
+<script>
+const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+
+fetch(BASE_API_URL + '/data')
+  .then(async (response) => {
+    const contentType = response.headers.get("content-type");
+    console.log("Response content-type:", contentType);
+
+    const rawText = await response.text();
+    console.log("Raw response body (first 500 chars):", rawText.substring(0, 500));
+
+    if (!response.ok) {
+      throw new Error('HTTP error: ' + response.status);
+    }
+
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Expected JSON but got: ' + contentType);
+    }
+
+    const data = JSON.parse(rawText);
+    console.log("Parsed data:", data);
+
+    const tbody = document.querySelector('#recordsTable tbody');
+    if (!tbody) {
+      console.error('Could not find #recordsTable tbody');
+      return;
+    }
+
+    tbody.innerHTML = data.map(function(record) {
+      return '<tr>' +
+        '<td>' + record.member_id + '</td>' +
+        '<td>' + record.name + ' ' + record.last_name + '</td>' +
+        '<td>' + (record.email || '') + '</td>' +
+        '<td>' + (record.membership_expires || '') + '</td>' +
+        '<td>' + (record.active_flag ? 'Active' : 'Inactive') + '</td>' +
+        '</tr>';
+    }).join('');
+  })
+  .catch(error => {
+    console.error('Data load failed:', error);
+    const tbody = document.querySelector('#recordsTable tbody');
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="5">Error loading data</td></tr>';
+    }
+  });
+</script>
+
 </body>
 </html>
