@@ -983,7 +983,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // --- Global Configuration ---
         
-		const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com';
+		const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
 		
         // Global variables for Add Visit View
         let currentAddVisitMemberId = null;
@@ -2731,9 +2731,14 @@ document.addEventListener('DOMContentLoaded', function() {
 const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
 
 fetch(`${BASE_API_URL}/data`)
-  .then(response => {
+  .then(async (response) => {
+    const contentType = response.headers.get("content-type");
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      throw new Error("Expected JSON but got HTML:\n" + text.substring(0, 300));
     }
     return response.json();
   })
@@ -2756,10 +2761,10 @@ fetch(`${BASE_API_URL}/data`)
     \`).join('');
   })
   .catch(error => {
-    console.error("Failed to load data:", error);
+    console.error("Data load failed:", error);
     const tbody = document.querySelector('#recordsTable tbody');
     if (tbody) {
-      tbody.innerHTML = '<tr><td colspan="5">Error loading data</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="5">Error loading data</td></tr>`;
     }
   });
 </script>
