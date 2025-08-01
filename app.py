@@ -342,6 +342,13 @@ def send_renewal_emails():
     cursor = conn.cursor()
     
     try:
+        cursor.execute("""
+            UPDATE family
+            SET active_flag = 0
+            WHERE membership_expires < ? AND founding_family = 0
+        """, date.today())
+        conn.commit()
+        
         today = date.today()
         query = """
             SELECT f.member_id, f.email, m.name, m.last_name, f.membership_expires
