@@ -147,6 +147,14 @@ def handler(event, context):
             raise ConnectionError("Failed to establish a database connection.")
 
         cursor = conn.cursor()
+        
+        today = date.today()
+        cursor.execute("""
+            UPDATE family
+            SET active_flag = 0
+            WHERE membership_expires < ? AND founding_family = 0
+        """, today)
+        conn.commit()
 
         today = date.today()
         current_month = today.month
