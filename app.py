@@ -410,15 +410,21 @@ def delete_record(member_id):
     
     cursor = conn.cursor()
     try:
+        rows_deleted = 0
         if data and 'name' in data and 'last_name' in data:
-            cursor.execute("DELETE FROM members WHERE member_id = ? AND name = ? AND last_name = ? AND primary_member = 0", 
-                           member_id, data['name'], data['last_name'])
+            cursor.execute(
+                "DELETE FROM members WHERE member_id = ? AND name = ? AND last_name = ? AND primary_member = 0",
+                member_id, data['name'], data['last_name']
+            )
+            rows_deleted = cursor.rowcount
         else:
             cursor.execute("DELETE FROM members WHERE member_id = ?", member_id)
+            rows_deleted += cursor.rowcount
             cursor.execute("DELETE FROM family WHERE member_id = ?", member_id)
-        
+            rows_deleted += cursor.rowcount
+
         conn.commit()
-        if cursor.rowcount == 0:
+        if rows_deleted == 0:
             return jsonify({"error": "Record not found."}), 404
         return jsonify({"message": "Record deleted successfully!"}), 200
     except pyodbc.Error as ex:
@@ -472,6 +478,7 @@ def get_today_visit_count():
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
 
+    cursor = None
     try:
         cursor = conn.cursor()
         today_start = datetime.combine(date.today(), datetime.min.time())
@@ -484,6 +491,8 @@ def get_today_visit_count():
         logging.error(f"Failed to count today's visits: {ex}")
         return jsonify({"error": "Could not retrieve visit count"}), 500
     finally:
+        if cursor:
+            cursor.close()
         if conn:
             conn.close()
 
