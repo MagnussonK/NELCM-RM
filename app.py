@@ -1,4 +1,4 @@
-# V3 - Corrected and Final
+# V2 - Corrected and Final
 import pyodbc
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -12,10 +12,6 @@ from decimal import Decimal
 import boto3
 from botocore.exceptions import ClientError
 from flask.json.provider import JSONProvider
-
-from dotenv import load_dotenv
-load_dotenv()
-
 
 # --- Robust JSON Handling ---
 # This custom class teaches Flask how to handle special data types like dates
@@ -121,19 +117,11 @@ def queue_email_to_sqs(email_details):
 
 # --- API Endpoints ---
 
-from cache import get_cache, set_cache
-
 @app.route('/api/data', methods=['GET'])
 def get_data():
     """
     Fetches all data by joining members and family tables.
-    Uses Redis cache if available.
     """
-    cache_key = "api_data_all"
-    data = get_cache(cache_key)
-    if data is not None:
-        return jsonify(data)
-
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
@@ -152,10 +140,12 @@ def get_data():
                 family AS f ON m.member_id = f.member_id
         """
         cursor.execute(query)
+        
         columns = [column[0] for column in cursor.description]
         rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        set_cache(cache_key, rows)
+        
         return jsonify(rows)
+
     except pyodbc.Error as ex:
         sqlstate = ex.args[0]
         logging.error(f"Error fetching data: {sqlstate} - {ex}")
@@ -168,7 +158,6 @@ def get_data():
             cursor.close()
         if conn:
             conn.close()
-
 
 @app.route('/api/update_expired_memberships', methods=['PUT'])
 def update_expired_memberships():
@@ -188,7 +177,6 @@ def update_expired_memberships():
             WHERE membership_expires < ? AND founding_family = 0
         """, today_str)
         conn.commit()
-        delete_cache("api_data_all")
         updated_rows = cursor.rowcount
         logging.info(f"Checked for expired memberships. Updated {updated_rows} records.")
         return jsonify({"message": f"Expired memberships updated successfully. {updated_rows} records affected."}), 200
@@ -251,7 +239,6 @@ def add_record():
         data.get('email'), data.get('founding_family', False), mem_start_date, membership_expires, True, False)
         
         conn.commit()
-        delete_cache("api_data_all")
         email_details = {
             "email_type": "welcome",
             "email": data.get('email'),
@@ -327,7 +314,6 @@ def update_record(member_id):
                 cursor.execute(query_family, tuple(family_params))
 
         conn.commit()
-        delete_cache("api_data_all")
         if is_primary and is_renewal:
             email_details = {
                 "email_type": "renewal_thank_you",
@@ -362,7 +348,7 @@ def send_renewal_emails():
             WHERE membership_expires < ? AND founding_family = 0
         """, date.today())
         conn.commit()
-        delete_cache("api_data_all")
+        
         today = date.today()
         query = """
             SELECT f.member_id, f.email, m.name, m.last_name, f.membership_expires
@@ -436,7 +422,6 @@ def delete_record(member_id):
             cursor.execute("DELETE FROM family WHERE member_id = ?", member_id)
             rows_deleted += cursor.rowcount
         conn.commit()
-        delete_cache("api_data_all")
         if rows_deleted == 0:
             return jsonify({"error": "Record not found."}), 404
         return jsonify({"message": "Record deleted successfully!"}), 200
@@ -473,7 +458,6 @@ def add_secondary_member():
         False, True)
         
         conn.commit()
-        delete_cache("api_data_all")
         return jsonify({"message": "Secondary member added successfully!"}), 201
     except pyodbc.Error as ex:
         conn.rollback()
@@ -521,7 +505,6 @@ def add_visit():
             VALUES (?, ?, ?, ?)
         """, data['member_id'], data['name'], data['last_name'], data['visit_datetime'])
         conn.commit()
-        delete_cache("api_data_all")
         return jsonify({"message": "Visit recorded successfully!"}), 201
     except pyodbc.Error as ex:
         sqlstate = ex.args[0]
