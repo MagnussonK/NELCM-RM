@@ -131,68 +131,74 @@ def get_data():
 
 @app.route('/api/add_record', methods=['POST'])
 def add_record():
-    import json, datetime
-    data = (request.json or {})
-    print("[add_record] incoming:", json.dumps(data, default=str))
+    import json
+    data = request.json or {}
 
     first = (data.get('name') or '').strip()
     last  = (data.get('last_name') or '').strip()
     if not first or not last:
         return jsonify({"error": "First and last name are required."}), 400
 
-    # Build member_id (unique)
+    # Build family ID like LllFf, de-dupe with -NN
     base_id = (last[:3].ljust(3))[:3].title() + (first[:2].ljust(2))[:2].title()
     member_id = base_id
+
+    # Normalize birthday
+    birthday = (data.get('birthday') or '').strip() or None
+    birth_month_day = None
+    birth_year = None
+    if birthday:
+        try:
+            y, m, d = map(int, birthday.split('-'))
+            if 1 <= m <= 12 and 1 <= d <= 31:
+                birth_month_day = f"{m:02d}-{d:02d}"
+                birth_year = y
+        except Exception:
+            birthday = None
+
+    # Gender to bit/None
+    g = data.get('gender')
+    if isinstance(g, str):
+        g = g.strip().lower()
+        g = 1 if g in ('true','1','male','m') else 0 if g in ('false','0','female','f') else None
+    elif isinstance(g, bool):
+        g = 1 if g else 0
+    else:
+        g = None
 
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
     cur = conn.cursor()
-    try:
-        # Sanity: which DB?
-        cur.execute("SELECT DB_NAME()")
-        dbname = cur.fetchone()[0]
-        print("[add_record] connected to DB:", dbname)
 
-        # Ensure uniqueness of member_id
+    try:
+        # ensure unique family id
         suffix = 1
         while True:
             cur.execute("SELECT COUNT(*) FROM dbo.members WHERE member_id = ?", (member_id,))
             (cnt,) = cur.fetchone()
-            if cnt == 0:
-                break
+            if cnt == 0: break
             suffix += 1
             member_id = f"{base_id}-{suffix:02d}"
-        print("[add_record] new member_id:", member_id)
 
-        # Normalize birthday
-        birth_month_day = None
-        birth_year = None
-        bday_str = (data.get('birthday') or '').strip()
-        if bday_str:
-            try:
-                y, m, d = map(int, bday_str.split('-'))
-                if 1 <= m <= 12 and 1 <= d <= 31:
-                    birth_month_day = f"{m:02d}-{d:02d}"
-                    birth_year = y
-            except Exception as e:
-                print("[add_record] birthday parse fail:", e)
-        if birth_month_day is None:
-            bm, bd, by = data.get('birth_month'), data.get('birth_day'), data.get('birth_year')
-            try:
-                if bm is not None and bd is not None:
-                    m, d = int(bm), int(bd)
-                    if 1 <= m <= 12 and 1 <= d <= 31:
-                        birth_month_day = f"{m:02d}-{d:02d}"
-            except Exception as e:
-                print("[add_record] split birthday parse fail:", e)
-            try:
-                if by not in (None, "", "None"):
-                    birth_year = int(by)
-            except Exception as e:
-                print("[add_record] birth_year parse fail:", e)
+        # 1) INSERT person row into dbo.members
+        cur.execute("""
+            INSERT INTO dbo.members
+                (member_id, name, last_name, phone, gender, primary_member, secondary_member,
+                 birthday, birth_month_day, birth_year)
+            VALUES (?, ?, ?, ?, ?, 1, 0, ?, ?, ?)
+        """, (
+            member_id,
+            first,
+            last,
+            (data.get('phone') or None),
+            g,
+            birthday,
+            birth_month_day,
+            birth_year
+        ))
 
-        # Normalize booleans (SQL Server bit)
+        # 2) INSERT family row into dbo.family (family-level fields)
         def to_bit(v):
             if isinstance(v, str):
                 v = v.strip().lower()
@@ -203,65 +209,33 @@ def add_record():
             if v is False: return 0
             return None
 
-        cols, vals = [], []
-        def add(col, val):
-            cols.append(col); vals.append(val)
-
-        add('member_id', member_id)
-        add('name', first)
-        add('last_name', last)
-        add('email', (data.get('email') or None))
-        add('phone', (data.get('phone') or None))
-        add('address', (data.get('address') or None))
-        add('city', (data.get('city') or None))
-        add('state', (data.get('state') or None))
-        add('zip_code', (data.get('zip_code') or None))
-
-        g = data.get('gender')
-        if isinstance(g, str):
-            g = g.strip().lower()
-            if g in ("true","1","male","m"): g = 1
-            elif g in ("false","0","female","f"): g = 0
-            else: g = None
-        add('gender', g)
-
-        if birth_month_day is not None: add('birth_month_day', birth_month_day)
-        if birth_year is not None:     add('birth_year', birth_year)
-
-        # Defaults (avoid NOT NULL fails)
-        # If mem_start_date is NOT NULL in your schema, give it a default
-        msd = data.get('mem_start_date')
-        if msd == "": msd = None
-        add('mem_start_date', msd)  # leave None if your schema allows NULL
-        add('membership_expires', data.get('membership_expires') or None)  # only if column exists & nullable
-
-        add('primary_member', 1)
-        add('secondary_member', 0)
-        add('founding_family', to_bit(data.get('founding_family')))
-        add('active_flag', 1)
-
-        # Plaque fields (make sure these columns EXIST)
-        if 'plaque_flg' in data:       add('plaque_flg', to_bit(data.get('plaque_flg')))
-        if 'plaque_message' in data:   add('plaque_message', (data.get('plaque_message') or None))
-
-        placeholders = ", ".join("?" for _ in cols)
-        sql = f"INSERT INTO dbo.members ({', '.join(cols)}) VALUES ({placeholders})"
-        print("[add_record] SQL:", sql)
-        print("[add_record] VALS:", vals)
-
-        cur.execute(sql, tuple(vals))
-        print("[add_record] rowcount after insert:", cur.rowcount)
-
-        if cur.rowcount != 1:
-            conn.rollback()
-            return jsonify({"error": f"Insert affected {cur.rowcount} rows (expected 1). Aborting."}), 500
+        cur.execute("""
+            INSERT INTO dbo.family
+                (member_id, address, city, state, zip_code,
+                 mem_start_date, founding_family, email, active_flag,
+                 membership_expires, plaque_flg, renewal_email_sent, plaque_message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            member_id,
+            (data.get('address') or None),
+            (data.get('city') or None),
+            (data.get('state') or None),
+            (data.get('zip_code') or None),
+            (data.get('mem_start_date') or None),               # NULL is fine per your schema
+            to_bit(data.get('founding_family')),
+            (data.get('email') or None),
+            1,                                                  # active by default
+            (data.get('membership_expires') or None),
+            to_bit(data.get('plaque_flg')),
+            0,                                                  # not sent yet
+            (data.get('plaque_message') or None)
+        ))
 
         conn.commit()
-        return jsonify({"message": "Record added successfully!", "member_id": member_id, "db": dbname}), 201
+        return jsonify({"message": "Record added successfully!", "member_id": member_id}), 201
 
     except Exception as e:
         conn.rollback()
-        # Surface exact DB error to CloudWatch and client
         import traceback; traceback.print_exc()
         return jsonify({"error": f"{type(e).__name__}: {e}"}), 500
     finally:
@@ -321,27 +295,19 @@ def update_record(member_id):
             family_keys = [
                 'email', 'address', 'city', 'state', 'zip_code',
                 'founding_family', 'mem_start_date', 'active_flag',
-                'plaque_flg', 'plaque_message'
+                'membership_expires', 'plaque_flg', 'plaque_message'
             ]
-            family_set = [f"{k} = ?" for k in family_keys if k in data]
-            family_params = [data[k] for k in family_keys if k in data]
-
-            if family_set:
-                sql_family = f"""
-                    UPDATE members
-                       SET {', '.join(family_set)}
-                     WHERE member_id = ?
-                       AND primary_member = 1
-                """
-                family_params += [member_id]
-                cur.execute(sql_family, tuple(family_params))
-
-                if cur.rowcount == 0:
+            sets = [f"{k} = ?" for k in family_keys if k in data]
+            params = [data[k] for k in family_keys if k in data]
+            if sets:
+                cur.execute(f"""
+                    UPDATE dbo.family
+                    SET {', '.join(sets)}
+                    WHERE member_id = ?
+                """, (*params, member_id))
+                if cur.rowcount != 1:
                     conn.rollback()
-                    return jsonify({"error": "Primary row not found for family-level update."}), 404
-                if cur.rowcount > 1:
-                    conn.rollback()
-                    return jsonify({"error": "Multiple primary rows updated (data integrity issue)."}), 409
+                    return jsonify({"error": "Family row not found or multiple updated."}), 409
 
         conn.commit()
         return jsonify({"message": "Record updated successfully!"}), 200
