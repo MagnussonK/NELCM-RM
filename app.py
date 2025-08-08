@@ -131,102 +131,113 @@ def get_data():
 
 @app.route('/api/add_record', methods=['POST'])
 def add_record():
-    data = request.json or {}
+    data = (request.json or {})
+    first = (data.get('name') or '').strip()
+    last  = (data.get('last_name') or '').strip()
+    if not first or not last:
+        return jsonify({"error": "First and last name are required."}), 400
 
-    # Normalize birthday inputs
-    birth_month_day = None
-    birth_year = None
-
-    # Option A: client sent a full birthday (YYYY-MM-DD)
-    bday_str = (data.get('birthday') or '').strip()
-    if bday_str:
-        try:
-            # Expecting YYYY-MM-DD
-            parts = bday_str.split('-')
-            if len(parts) == 3:
-                y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
-                if 1 <= m <= 12 and 1 <= d <= 31:
-                    birth_month_day = f"{m:02d}-{d:02d}"
-                    birth_year = y
-        except Exception:
-            # swallow parsing errors; leave as None
-            pass
-
-    # Option B: client sent split fields (birth_month, birth_day, optionally birth_year)
-    if birth_month_day is None:
-        bm = data.get('birth_month')
-        bd = data.get('birth_day')
-        by = data.get('birth_year')
-
-        try:
-            if bm is not None and bd is not None:
-                m = int(bm)
-                d = int(bd)
-                if 1 <= m <= 12 and 1 <= d <= 31:
-                    birth_month_day = f"{m:02d}-{d:02d}"
-        except Exception:
-            birth_month_day = None
-
-        try:
-            if by not in (None, "", "None"):
-                birth_year = int(by)
-        except Exception:
-            birth_year = None
-
-    # Build insert columns/params dynamically (avoid inserting bad strings)
-    cols = [
-        ('member_id', data.get('member_id')),           # if you generate this server-side, set it here
-        ('name', data.get('name')),
-        ('last_name', data.get('last_name')),
-        ('email', data.get('email')),
-        ('phone', data.get('phone')),
-        ('address', data.get('address')),
-        ('city', data.get('city')),
-        ('state', data.get('state')),
-        ('zip_code', data.get('zip_code')),
-        ('gender', data.get('gender')),
-        ('primary_member', True),
-        ('secondary_member', False),
-        ('founding_family', bool(data.get('founding_family'))),
-        ('mem_start_date', data.get('mem_start_date')),     # or default to today if you prefer
-        ('active_flag', True),
-        # Plaque fields (family-level)
-        ('plaque_flg', bool(data.get('plaque_flg', False))),
-        ('plaque_message', data.get('plaque_message')),
-    ]
-
-    # Add birthday parts only if valid
-    if birth_month_day is not None:
-        cols.append(('birth_month_day', birth_month_day))
-    if birth_year is not None:
-        cols.append(('birth_year', birth_year))
-
-    # Remove None-only columns if you prefer to skip them entirely; otherwise keep them (NULLs are fine)
-    insert_cols = [c for c, _ in cols]
-    insert_vals = [v for _, v in cols]
-    placeholders = ", ".join(["?"] * len(insert_cols))
-
-    sql = f"""
-        INSERT INTO members ({", ".join(insert_cols)})
-        VALUES ({placeholders})
-    """
+    # ---- Make a unique member_id: LllFf, add -NN if collision ----
+    base_id = (last[:3].ljust(3))[:3].title() + (first[:2].ljust(2))[:2].title()  # e.g., Bar + Ol => BarOl
+    member_id = base_id
 
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
-
     cur = conn.cursor()
+
     try:
-        cur.execute(sql, tuple(insert_vals))
+        # Ensure uniqueness
+        suffix = 1
+        while True:
+            cur.execute("SELECT COUNT(*) FROM members WHERE member_id = ?", (member_id,))
+            (cnt,) = cur.fetchone()
+            if cnt == 0:
+                break
+            suffix += 1
+            member_id = f"{base_id}-{suffix:02d}"
+
+        # ---- Normalize birthday (either YYYY-MM-DD or split) ----
+        birth_month_day = None
+        birth_year = None
+
+        bday_str = (data.get('birthday') or '').strip()
+        if bday_str:
+            try:
+                y, m, d = map(int, bday_str.split('-'))
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    birth_month_day = f"{m:02d}-{d:02d}"
+                    birth_year = y
+            except Exception:
+                pass
+
+        if birth_month_day is None:
+            bm, bd, by = data.get('birth_month'), data.get('birth_day'), data.get('birth_year')
+            try:
+                if bm is not None and bd is not None:
+                    m, d = int(bm), int(bd)
+                    if 1 <= m <= 12 and 1 <= d <= 31:
+                        birth_month_day = f"{m:02d}-{d:02d}"
+            except Exception:
+                birth_month_day = None
+            try:
+                if by not in (None, "", "None"):
+                    birth_year = int(by)
+            except Exception:
+                birth_year = None
+
+        # ---- Build column list safely ----
+        cols, vals = [], []
+
+        def add(col, val):
+            cols.append(col); vals.append(val)
+
+        add('member_id', member_id)
+        add('name', first)
+        add('last_name', last)
+        add('email', (data.get('email') or None))
+        add('phone', (data.get('phone') or None))
+        add('address', (data.get('address') or None))
+        add('city', (data.get('city') or None))
+        add('state', (data.get('state') or None))
+        add('zip_code', (data.get('zip_code') or None))
+
+        # gender expected as bit/bool; accept 'true'/'false' strings too
+        g = data.get('gender')
+        if isinstance(g, str):
+            g = True if g.lower() == 'true' else (False if g.lower() == 'false' else None)
+        add('gender', g)
+
+        if birth_month_day is not None:
+            add('birth_month_day', birth_month_day)
+        if birth_year is not None:
+            add('birth_year', birth_year)
+
+        # family/primary defaults
+        add('primary_member', True)
+        add('secondary_member', False)
+        add('founding_family', bool(data.get('founding_family', False)))
+        add('active_flag', True)                     # new families start Active
+        add('mem_start_date', data.get('mem_start_date') or None)  # you can leave NULL; UI has Update Membership
+
+        # plaque fields (optional)
+        add('plaque_flg', bool(data.get('plaque_flg', False)))
+        add('plaque_message', (data.get('plaque_message') or None))
+
+        placeholders = ", ".join("?" for _ in cols)
+        sql = f"INSERT INTO members ({', '.join(cols)}) VALUES ({placeholders})"
+        cur.execute(sql, tuple(vals))
         conn.commit()
-        # if you generate member_id server-side (e.g., trigger), return it here
-        return jsonify({"message": "Record added successfully!", "member_id": data.get('member_id')}), 200
+
+        return jsonify({"message": "Record added successfully!", "member_id": member_id}), 200
+
     except Exception as e:
         conn.rollback()
         return jsonify({"error": f"Add failed: {e}"}), 500
     finally:
         cur.close()
         conn.close()
+
 
 
 @app.route('/api/update_record/<member_id>', methods=['PUT'])
