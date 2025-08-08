@@ -292,6 +292,24 @@ def update_record(member_id):
         # -------- family-level (primary row only) --------
         # Only if editing primary; ignore if secondary
         if is_primary:
+            if 'mem_start_date' in data:
+                new_start = data['mem_start_date'] or None
+
+                # Active on renewal; expire = start + 1 year - 1 day (unless founding family)
+                cur.execute("""
+                    UPDATE dbo.family
+                    SET mem_start_date = ?,
+                        membership_expires = CASE
+                            WHEN founding_family = 1 THEN NULL
+                            ELSE DATEADD(DAY, -1, DATEADD(YEAR, 1, ?))
+                        END,
+                        active_flag = 1
+                    WHERE member_id = ?
+                """, (new_start, new_start, member_id))
+
+        if cur.rowcount != 1:
+            conn.rollback()
+            return jsonify({"error": "Family row not found or multiple updated."}), 409
             family_keys = [
                 'email', 'address', 'city', 'state', 'zip_code',
                 'founding_family', 'mem_start_date', 'active_flag',
