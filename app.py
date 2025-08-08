@@ -187,30 +187,87 @@ def add_record():
 
 @app.route('/api/update_record/<member_id>', methods=['PUT'])
 def update_record(member_id):
-    """Update member info, including new birthday logic."""
-    data = request.json
+    """Update a single member row; update family-level fields only on the primary row."""
+    data = request.json or {}
+
     conn = get_db_connection()
-    if conn is None: return jsonify({"error": "Database connection failed"}), 500
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
     cursor = conn.cursor()
+
     try:
-        member_keys = ['name', 'last_name', 'phone', 'gender']
-        # Birthday
+        # -------- Build person-level updates (this ONE row only) --------
+        # Accept birth_* fields and collapse to birth_month_day / birth_year
         if 'birth_month' in data and 'birth_day' in data:
-            member_keys += ['birth_month_day']
             data['birth_month_day'] = f"{str(data['birth_month']).zfill(2)}-{str(data['birth_day']).zfill(2)}"
-        if 'birth_year' in data:
-            member_keys += ['birth_year']
-        member_clauses = [f"{key} = ?" for key in data if key in member_keys]
-        member_params = [data[key] for key in data if key in member_keys]
-        member_params.append(member_id)
-        if member_clauses:
-            query_member = f"UPDATE members SET {', '.join(member_clauses)} WHERE member_id = ?"
-            cursor.execute(query_member, tuple(member_params))
+
+        person_keys = ['name', 'last_name', 'phone', 'gender', 'birth_month_day', 'birth_year']
+        person_set = [f"{k} = ?" for k in person_keys if k in data]
+        person_params = [data[k] for k in person_keys if k in data]
+
+        is_primary = bool(data.get('is_primary', False))
+        original_name = data.get('original_name')
+        original_last_name = data.get('original_last_name')
+
+        if person_set:
+            if not original_name or not original_last_name:
+                return jsonify({"error": "original_name and original_last_name are required for person updates."}), 400
+
+            # Update ONLY the single row that matches member_id + original name/last_name + primary flag
+            query_person = f"""
+                UPDATE members
+                SET {', '.join(person_set)}
+                WHERE member_id = ?
+                  AND name = ?
+                  AND last_name = ?
+                  AND primary_member = ?
+            """
+            person_params += [member_id, original_name, original_last_name, 1 if is_primary else 0]
+            cursor.execute(query_person, tuple(person_params))
+
+            if cursor.rowcount > 1:
+                conn.rollback()
+                return jsonify({"error": "Multiple rows would be updated for person-level fields; aborting."}), 409
+
+            if cursor.rowcount == 0:
+                # Not found with the original name/role — let the caller know.
+                return jsonify({"error": "Target member row not found for the provided original_name/last_name/is_primary."}), 404
+
+        # -------- Build family-level updates (PRIMARY ROW ONLY) --------
+        # Only allow on primary edits
+        family_keys = [
+            'email', 'address', 'city', 'state', 'zip_code',
+            'founding_family', 'mem_start_date', 'active_flag',
+            'plaque_flg', 'plaque_message'
+        ]
+        if is_primary:
+            family_set = [f"{k} = ?" for k in family_keys if k in data]
+            family_params = [data[k] for k in family_keys if k in data]
+
+            if family_set:
+                query_family = f"""
+                    UPDATE members
+                    SET {', '.join(family_set)}
+                    WHERE member_id = ?
+                      AND primary_member = 1
+                """
+                family_params += [member_id]
+                cursor.execute(query_family, tuple(family_params))
+
+                if cursor.rowcount > 1:
+                    conn.rollback()
+                    return jsonify({"error": "Multiple primary rows updated; data integrity issue."}), 409
+
         conn.commit()
         return jsonify({"message": "Record updated successfully!"}), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Update failed: {e}"}), 500
     finally:
         cursor.close()
         conn.close()
+
 
 @app.route('/api/delete_record/<member_id>', methods=['DELETE'])
 def delete_record(member_id):
