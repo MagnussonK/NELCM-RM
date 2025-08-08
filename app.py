@@ -131,36 +131,43 @@ def get_data():
 
 @app.route('/api/add_record', methods=['POST'])
 def add_record():
+    import json, datetime
     data = (request.json or {})
+    print("[add_record] incoming:", json.dumps(data, default=str))
+
     first = (data.get('name') or '').strip()
     last  = (data.get('last_name') or '').strip()
     if not first or not last:
         return jsonify({"error": "First and last name are required."}), 400
 
-    # ---- Make a unique member_id: LllFf, add -NN if collision ----
-    base_id = (last[:3].ljust(3))[:3].title() + (first[:2].ljust(2))[:2].title()  # e.g., Bar + Ol => BarOl
+    # Build member_id (unique)
+    base_id = (last[:3].ljust(3))[:3].title() + (first[:2].ljust(2))[:2].title()
     member_id = base_id
 
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
     cur = conn.cursor()
-
     try:
-        # Ensure uniqueness
+        # Sanity: which DB?
+        cur.execute("SELECT DB_NAME()")
+        dbname = cur.fetchone()[0]
+        print("[add_record] connected to DB:", dbname)
+
+        # Ensure uniqueness of member_id
         suffix = 1
         while True:
-            cur.execute("SELECT COUNT(*) FROM members WHERE member_id = ?", (member_id,))
+            cur.execute("SELECT COUNT(*) FROM dbo.members WHERE member_id = ?", (member_id,))
             (cnt,) = cur.fetchone()
             if cnt == 0:
                 break
             suffix += 1
             member_id = f"{base_id}-{suffix:02d}"
+        print("[add_record] new member_id:", member_id)
 
-        # ---- Normalize birthday (either YYYY-MM-DD or split) ----
+        # Normalize birthday
         birth_month_day = None
         birth_year = None
-
         bday_str = (data.get('birthday') or '').strip()
         if bday_str:
             try:
@@ -168,9 +175,8 @@ def add_record():
                 if 1 <= m <= 12 and 1 <= d <= 31:
                     birth_month_day = f"{m:02d}-{d:02d}"
                     birth_year = y
-            except Exception:
-                pass
-
+            except Exception as e:
+                print("[add_record] birthday parse fail:", e)
         if birth_month_day is None:
             bm, bd, by = data.get('birth_month'), data.get('birth_day'), data.get('birth_year')
             try:
@@ -178,17 +184,26 @@ def add_record():
                     m, d = int(bm), int(bd)
                     if 1 <= m <= 12 and 1 <= d <= 31:
                         birth_month_day = f"{m:02d}-{d:02d}"
-            except Exception:
-                birth_month_day = None
+            except Exception as e:
+                print("[add_record] split birthday parse fail:", e)
             try:
                 if by not in (None, "", "None"):
                     birth_year = int(by)
-            except Exception:
-                birth_year = None
+            except Exception as e:
+                print("[add_record] birth_year parse fail:", e)
 
-        # ---- Build column list safely ----
+        # Normalize booleans (SQL Server bit)
+        def to_bit(v):
+            if isinstance(v, str):
+                v = v.strip().lower()
+                if v in ("true","1","yes"): return 1
+                if v in ("false","0","no",""): return 0
+                return None
+            if v is True: return 1
+            if v is False: return 0
+            return None
+
         cols, vals = [], []
-
         def add(col, val):
             cols.append(col); vals.append(val)
 
@@ -202,41 +217,55 @@ def add_record():
         add('state', (data.get('state') or None))
         add('zip_code', (data.get('zip_code') or None))
 
-        # gender expected as bit/bool; accept 'true'/'false' strings too
         g = data.get('gender')
         if isinstance(g, str):
-            g = True if g.lower() == 'true' else (False if g.lower() == 'false' else None)
+            g = g.strip().lower()
+            if g in ("true","1","male","m"): g = 1
+            elif g in ("false","0","female","f"): g = 0
+            else: g = None
         add('gender', g)
 
-        if birth_month_day is not None:
-            add('birth_month_day', birth_month_day)
-        if birth_year is not None:
-            add('birth_year', birth_year)
+        if birth_month_day is not None: add('birth_month_day', birth_month_day)
+        if birth_year is not None:     add('birth_year', birth_year)
 
-        # family/primary defaults
-        add('primary_member', True)
-        add('secondary_member', False)
-        add('founding_family', bool(data.get('founding_family', False)))
-        add('active_flag', True)                     # new families start Active
-        add('mem_start_date', data.get('mem_start_date') or None)  # you can leave NULL; UI has Update Membership
+        # Defaults (avoid NOT NULL fails)
+        # If mem_start_date is NOT NULL in your schema, give it a default
+        msd = data.get('mem_start_date')
+        if msd == "": msd = None
+        add('mem_start_date', msd)  # leave None if your schema allows NULL
+        add('membership_expires', data.get('membership_expires') or None)  # only if column exists & nullable
 
-        # plaque fields (optional)
-        add('plaque_flg', bool(data.get('plaque_flg', False)))
-        add('plaque_message', (data.get('plaque_message') or None))
+        add('primary_member', 1)
+        add('secondary_member', 0)
+        add('founding_family', to_bit(data.get('founding_family')))
+        add('active_flag', 1)
+
+        # Plaque fields (make sure these columns EXIST)
+        if 'plaque_flg' in data:       add('plaque_flg', to_bit(data.get('plaque_flg')))
+        if 'plaque_message' in data:   add('plaque_message', (data.get('plaque_message') or None))
 
         placeholders = ", ".join("?" for _ in cols)
-        sql = f"INSERT INTO members ({', '.join(cols)}) VALUES ({placeholders})"
-        cur.execute(sql, tuple(vals))
-        conn.commit()
+        sql = f"INSERT INTO dbo.members ({', '.join(cols)}) VALUES ({placeholders})"
+        print("[add_record] SQL:", sql)
+        print("[add_record] VALS:", vals)
 
-        return jsonify({"message": "Record added successfully!", "member_id": member_id}), 200
+        cur.execute(sql, tuple(vals))
+        print("[add_record] rowcount after insert:", cur.rowcount)
+
+        if cur.rowcount != 1:
+            conn.rollback()
+            return jsonify({"error": f"Insert affected {cur.rowcount} rows (expected 1). Aborting."}), 500
+
+        conn.commit()
+        return jsonify({"message": "Record added successfully!", "member_id": member_id, "db": dbname}), 201
 
     except Exception as e:
         conn.rollback()
-        return jsonify({"error": f"Add failed: {e}"}), 500
+        # Surface exact DB error to CloudWatch and client
+        import traceback; traceback.print_exc()
+        return jsonify({"error": f"{type(e).__name__}: {e}"}), 500
     finally:
-        cur.close()
-        conn.close()
+        cur.close(); conn.close()
 
 
 
