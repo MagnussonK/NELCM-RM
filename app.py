@@ -301,7 +301,7 @@ def update_record(member_id):
                     SET mem_start_date = ?,
                         membership_expires = CASE
                             WHEN founding_family = 1 THEN NULL
-                            ELSE DATEADD(DAY, -1, DATEADD(YEAR, 1, ?))
+                            ELSE EOMONTH(?, 12)
                         END,
                         active_flag = 1
                     WHERE member_id = ?
