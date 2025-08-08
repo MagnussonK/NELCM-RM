@@ -131,59 +131,103 @@ def get_data():
 
 @app.route('/api/add_record', methods=['POST'])
 def add_record():
-    """Add a new primary member (and family) with new birthday logic."""
-    data = request.json
+    data = request.json or {}
+
+    # Normalize birthday inputs
+    birth_month_day = None
+    birth_year = None
+
+    # Option A: client sent a full birthday (YYYY-MM-DD)
+    bday_str = (data.get('birthday') or '').strip()
+    if bday_str:
+        try:
+            # Expecting YYYY-MM-DD
+            parts = bday_str.split('-')
+            if len(parts) == 3:
+                y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    birth_month_day = f"{m:02d}-{d:02d}"
+                    birth_year = y
+        except Exception:
+            # swallow parsing errors; leave as None
+            pass
+
+    # Option B: client sent split fields (birth_month, birth_day, optionally birth_year)
+    if birth_month_day is None:
+        bm = data.get('birth_month')
+        bd = data.get('birth_day')
+        by = data.get('birth_year')
+
+        try:
+            if bm is not None and bd is not None:
+                m = int(bm)
+                d = int(bd)
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    birth_month_day = f"{m:02d}-{d:02d}"
+        except Exception:
+            birth_month_day = None
+
+        try:
+            if by not in (None, "", "None"):
+                birth_year = int(by)
+        except Exception:
+            birth_year = None
+
+    # Build insert columns/params dynamically (avoid inserting bad strings)
+    cols = [
+        ('member_id', data.get('member_id')),           # if you generate this server-side, set it here
+        ('name', data.get('name')),
+        ('last_name', data.get('last_name')),
+        ('email', data.get('email')),
+        ('phone', data.get('phone')),
+        ('address', data.get('address')),
+        ('city', data.get('city')),
+        ('state', data.get('state')),
+        ('zip_code', data.get('zip_code')),
+        ('gender', data.get('gender')),
+        ('primary_member', True),
+        ('secondary_member', False),
+        ('founding_family', bool(data.get('founding_family'))),
+        ('mem_start_date', data.get('mem_start_date')),     # or default to today if you prefer
+        ('active_flag', True),
+        # Plaque fields (family-level)
+        ('plaque_flg', bool(data.get('plaque_flg', False))),
+        ('plaque_message', data.get('plaque_message')),
+    ]
+
+    # Add birthday parts only if valid
+    if birth_month_day is not None:
+        cols.append(('birth_month_day', birth_month_day))
+    if birth_year is not None:
+        cols.append(('birth_year', birth_year))
+
+    # Remove None-only columns if you prefer to skip them entirely; otherwise keep them (NULLs are fine)
+    insert_cols = [c for c, _ in cols]
+    insert_vals = [v for _, v in cols]
+    placeholders = ", ".join(["?"] * len(insert_cols))
+
+    sql = f"""
+        INSERT INTO members ({", ".join(insert_cols)})
+        VALUES ({placeholders})
+    """
+
     conn = get_db_connection()
-    if conn is None: return jsonify({"error": "Database connection failed"}), 500
-    cursor = conn.cursor()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    cur = conn.cursor()
     try:
-        first_name = data.get('name', '')
-        last_name = data.get('last_name', '')
-        if not first_name or not last_name:
-            return jsonify({"error": "First name and last name are required."}), 400
-        last_name_part = (last_name + '   ')[:3]
-        first_name_part = (first_name + '  ')[:2]
-        part1 = last_name_part[0].upper() + last_name_part[1:3].lower()
-        part2 = first_name_part[0].upper() + first_name_part[1:].lower()
-        member_id = part1 + part2
-        cursor.execute("SELECT COUNT(*) FROM members WHERE member_id = ?", member_id)
-        if cursor.fetchone()[0] > 0:
-            return jsonify({"error": f"Generated Member ID '{member_id}' already exists. Please modify the name slightly to create a unique ID."}), 409
-        # --- Birthday ---
-        birth_month = str(data.get('birth_month')).zfill(2)
-        birth_day = str(data.get('birth_day')).zfill(2)
-        birth_month_day = f"{birth_month}-{birth_day}"
-        birth_year = data.get('birth_year') if data.get('birth_year') else None
-        cursor.execute("""
-            INSERT INTO members (member_id, name, last_name, phone, birth_month_day, birth_year, gender, primary_member, secondary_member)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        member_id, first_name, last_name, data.get('phone'),
-        birth_month_day, birth_year, data.get('gender'), True, False)
-        # --- Family ---
-        mem_start_date = date.today()
-        expiry_year = mem_start_date.year + 1
-        expiry_month = mem_start_date.month
-        _, last_day = calendar.monthrange(expiry_year, expiry_month)
-        membership_expires = date(expiry_year, expiry_month, last_day)
-        cursor.execute("""
-            INSERT INTO family (member_id, address, city, state, zip_code, email, founding_family, mem_start_date, membership_expires, active_flag, renewal_email_sent)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        member_id, data.get('address'), data.get('city'), data.get('state'), data.get('zip_code'),
-        data.get('email'), data.get('founding_family', False), mem_start_date, membership_expires, True, False)
+        cur.execute(sql, tuple(insert_vals))
         conn.commit()
-        email_details = {
-            "email_type": "welcome",
-            "email": data.get('email'),
-            "name": first_name,
-            "last_name": last_name
-        }
-        queue_email_to_sqs(email_details)
-        return jsonify({"message": "Record added successfully!", "member_id": member_id}), 201
+        # if you generate member_id server-side (e.g., trigger), return it here
+        return jsonify({"message": "Record added successfully!", "member_id": data.get('member_id')}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Add failed: {e}"}), 500
     finally:
-        cursor.close()
+        cur.close()
         conn.close()
+
 
 @app.route('/api/update_record/<member_id>', methods=['PUT'])
 def update_record(member_id):
