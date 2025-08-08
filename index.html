@@ -2289,6 +2289,14 @@
                     recordDetailsZipCodeInput.disabled = !isPrimary;
                     recordDetailsFoundingFamilyCheckbox.disabled = !isPrimary;
                     recordDetailsMemStartDateInput.disabled = !isPrimary;
+					
+					if (isPrimary) {
+						recordDetailsDeleteRecordBtn.disabled = true;
+						recordDetailsDeleteRecordBtn.title = 'Primary members cannot be deleted.';
+					} else {
+						recordDetailsDeleteRecordBtn.disabled = false;
+						recordDetailsDeleteRecordBtn.title = '';
+					}
                     
                     // Allow editing expires date for primary, non-founding members
                     recordDetailsMembershipExpiresInput.disabled = true; // Always disabled
@@ -2400,6 +2408,10 @@
 
         recordDetailsDeleteRecordBtn.addEventListener('click', async () => {
             if (!currentRecordDetailsFamilyId) return;
+	    	if (currentRecordDetailsIsPrimary) {
+				showMessage('Primary members and family records cannot be deleted.', 'error');
+				return;
+			}
 
             let confirmMessage = currentRecordDetailsIsPrimary
                 ? `Are you sure you want to delete the PRIMARY member and ALL associated family members for Family ID: ${currentRecordDetailsFamilyId}? This action cannot be undone.`

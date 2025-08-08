@@ -271,18 +271,61 @@ def update_record(member_id):
 
 @app.route('/api/delete_record/<member_id>', methods=['DELETE'])
 def delete_record(member_id):
-    """Delete a member and family by ID."""
+    """
+    Delete a SINGLE secondary member only.
+    Primary members and whole-family deletions are not allowed.
+    Body must include { "name": "...", "last_name": "..." }.
+    """
+    data = request.get_json(silent=True) or {}
+    name = data.get('name')
+    last_name = data.get('last_name')
+
+    if not name or not last_name:
+        # No name provided => someone tried to delete the whole family by member_id
+        return jsonify({"error": "Family records cannot be deleted."}), 403
+
     conn = get_db_connection()
-    if conn is None: return jsonify({"error": "Database connection failed"}), 500
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
     cursor = conn.cursor()
+
     try:
-        cursor.execute("DELETE FROM members WHERE member_id = ?", member_id)
-        cursor.execute("DELETE FROM family WHERE member_id = ?", member_id)
+        # Check if the target row is a primary member
+        cursor.execute("""
+            SELECT primary_member
+            FROM members
+            WHERE member_id = ? AND name = ? AND last_name = ?
+        """, (member_id, name, last_name))
+        row = cursor.fetchone()
+
+        if not row:
+            return jsonify({"error": "Member not found for provided identifiers."}), 404
+
+        is_primary = bool(row[0])
+        if is_primary:
+            return jsonify({"error": "Primary members cannot be deleted."}), 403
+
+        # Delete only this secondary row
+        cursor.execute("""
+            DELETE FROM members
+            WHERE member_id = ? AND name = ? AND last_name = ? AND primary_member = 0
+        """, (member_id, name, last_name))
+
+        if cursor.rowcount != 1:
+            # Should never delete more than one
+            conn.rollback()
+            return jsonify({"error": "Delete failed or would affect multiple rows. Aborted."}), 409
+
         conn.commit()
-        return jsonify({"message": "Record deleted successfully!"}), 200
+        return jsonify({"message": "Secondary member deleted successfully."}), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Delete failed: {e}"}), 500
     finally:
         cursor.close()
         conn.close()
+
 
 @app.route('/api/add_secondary_member', methods=['POST'])
 def add_secondary_member():
