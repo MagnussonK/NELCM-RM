@@ -378,9 +378,105 @@ def delete_record(member_id):
         cursor.close()
         conn.close()
 
-
 @app.route('/api/add_secondary_member', methods=['POST'])
 def add_secondary_member():
+    data = request.json or {}
+
+    primary_member_id = (data.get('primary_member_id') or '').strip()
+    first = (data.get('name') or '').strip()
+    last  = (data.get('last_name') or '').strip()
+    if not primary_member_id or not first or not last:
+        return jsonify({"error": "primary_member_id, name, and last_name are required."}), 400
+
+    # Normalize birthday into (birthday, birth_month_day, birth_year)
+    birthday = (data.get('birthday') or '').strip() or None
+    birth_month_day = None
+    birth_year = None
+
+    # A) full date "YYYY-MM-DD"
+    if birthday:
+        try:
+            y, m, d = map(int, birthday.split('-'))
+            if 1 <= m <= 12 and 1 <= d <= 31:
+                birth_month_day = f"{m:02d}-{d:02d}"
+                birth_year = y
+        except Exception:
+            birthday = None  # swallow bad date
+
+    # B) split fields
+    if birth_month_day is None:
+        bm, bd, by = data.get('birth_month'), data.get('birth_day'), data.get('birth_year')
+        try:
+            if bm is not None and bd is not None:
+                m, d = int(bm), int(bd)
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    birth_month_day = f"{m:02d}-{d:02d}"
+        except Exception:
+            birth_month_day = None
+        try:
+            if by not in (None, "", "None"):
+                birth_year = int(by)
+        except Exception:
+            birth_year = None
+
+    # Normalize gender -> bit/None
+    g = data.get('gender')
+    if isinstance(g, str):
+        g = g.strip().lower()
+        if g in ('true','1','male','m'): g = 1
+        elif g in ('false','0','female','f'): g = 0
+        else: g = None
+    elif isinstance(g, bool):
+        g = 1 if g else 0
+    else:
+        g = None
+
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+    cur = conn.cursor()
+
+    try:
+        # Optional: ensure the family exists
+        cur.execute("SELECT 1 FROM dbo.family WHERE member_id = ?", (primary_member_id,))
+        if not cur.fetchone():
+            return jsonify({"error": "Primary family/member_id not found."}), 404
+
+        # Build dynamic column list — OMIT birth_month_day unless valid
+        cols, vals = [], []
+        def add(col, val): cols.append(col); vals.append(val)
+
+        add('member_id', primary_member_id)
+        add('name', first)
+        add('last_name', last)
+        add('phone', (data.get('phone') or None))
+        add('gender', g)
+        add('primary_member', 0)
+        add('secondary_member', 1)
+
+        if birthday is not None:
+            add('birthday', birthday)
+        if birth_month_day is not None:   # <-- critical: only if valid
+            add('birth_month_day', birth_month_day)
+        if birth_year is not None:
+            add('birth_year', birth_year)
+
+        sql = f"INSERT INTO dbo.members ({', '.join(cols)}) VALUES ({', '.join(['?']*len(cols))})"
+        cur.execute(sql, tuple(vals))
+        if cur.rowcount != 1:
+            conn.rollback()
+            return jsonify({"error": f"Insert affected {cur.rowcount} rows (expected 1)."}), 500
+
+        conn.commit()
+        return jsonify({"message": "Secondary member added successfully!"}), 201
+
+    except Exception as e:
+        conn.rollback()
+        import traceback; traceback.print_exc()
+        return jsonify({"error": f"{type(e).__name__}: {e}"}), 500
+    finally:
+        cur.close(); conn.close()
+
     """Add a secondary member with new birthday logic."""
     data = request.json
     primary_member_id = data.get('primary_member_id')
