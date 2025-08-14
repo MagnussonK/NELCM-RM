@@ -814,15 +814,6 @@
                     <label for="recordDetailsSecondaryMember" class="mb-0">Secondary Member</label>
                 </div>
 
-				<div class="checkbox-group">
-					<input type="checkbox" id="recordDetailsPlaqueFlag">
-					<label for="recordDetailsPlaqueFlag" class="mb-0">Plaque Ordered</label>
-				</div>
-				<div class="form-group">
-					<label for="recordDetailsPlaqueMessage">Plaque Message:</label>
-					<input type="text" id="recordDetailsPlaqueMessage" disabled>
-				</div>
-				
                 <div class="form-group">
                     <label for="recordDetailsMemStartDate">Membership Start Date:</label>
                     <input type="date" id="recordDetailsMemStartDate" disabled>
@@ -2234,8 +2225,6 @@
         const recordDetailsActiveFlagCheckbox = document.getElementById('recordDetailsActiveFlag');
         const recordDetailsDeleteRecordBtn = document.getElementById('recordDetailsDeleteRecordBtn');
         const recordDetailsCloseBtn = document.getElementById('recordDetailsCloseBtn');
-		const recordDetailsPlaqueFlag = document.getElementById('recordDetailsPlaqueFlag');
-		const recordDetailsPlaqueMessage = document.getElementById('recordDetailsPlaqueMessage');
 
         let currentRecordDetailsFamilyId = null;
         let currentRecordDetailsName = null;
@@ -2289,20 +2278,12 @@
                     recordDetailsZipCodeInput.disabled = !isPrimary;
                     recordDetailsFoundingFamilyCheckbox.disabled = !isPrimary;
                     recordDetailsMemStartDateInput.disabled = !isPrimary;
-					
-					if (isPrimary) {
-						recordDetailsDeleteRecordBtn.disabled = true;
-						recordDetailsDeleteRecordBtn.title = 'Primary members cannot be deleted.';
-					} else {
-						recordDetailsDeleteRecordBtn.disabled = false;
-						recordDetailsDeleteRecordBtn.title = '';
-					}
                     
                     // Allow editing expires date for primary, non-founding members
                     recordDetailsMembershipExpiresInput.disabled = true; // Always disabled
 
                     recordDetailsActiveFlagCheckbox.disabled = !isPrimary || record.founding_family;
-					
+
                     if (record.founding_family) {
                         recordDetailsMembershipExpiresContainer.style.display = 'none';
                     } else {
@@ -2312,27 +2293,6 @@
                     recordDetailForm.querySelector('button[type="submit"]').disabled = false;
                     recordDetailsDeleteRecordBtn.disabled = false;
                     recordDetailsCloseBtn.disabled = false;
-					
-					if (isPrimary) {
-						recordDetailsPlaqueFlag.disabled = false;
-						recordDetailsPlaqueMessage.disabled = !recordDetailsPlaqueFlag.checked;
-					} else {
-						recordDetailsPlaqueFlag.disabled = true;
-						recordDetailsPlaqueFlag.checked = false;
-						recordDetailsPlaqueMessage.disabled = true;
-						recordDetailsPlaqueMessage.value = "";
-					}
-					// Set values if present
-					recordDetailsPlaqueFlag.checked = record.plaque_flg || false;
-					recordDetailsPlaqueMessage.value = record.plaque_message || "";
-
-					// Sync enable/disable on checkbox change
-					recordDetailsPlaqueFlag.addEventListener('change', function() {
-					recordDetailsPlaqueMessage.disabled = !recordDetailsPlaqueFlag.checked;
-					if (!recordDetailsPlaqueFlag.checked) {
-						recordDetailsPlaqueMessage.value = "";
-					}
-				});
                 } else {
                     showMessage('Record not found for the given ID, Name, and Last Name.', 'error');
                 }
@@ -2408,10 +2368,6 @@
 
         recordDetailsDeleteRecordBtn.addEventListener('click', async () => {
             if (!currentRecordDetailsFamilyId) return;
-	    	if (currentRecordDetailsIsPrimary) {
-				showMessage('Primary members and family records cannot be deleted.', 'error');
-				return;
-			}
 
             let confirmMessage = currentRecordDetailsIsPrimary
                 ? `Are you sure you want to delete the PRIMARY member and ALL associated family members for Family ID: ${currentRecordDetailsFamilyId}? This action cannot be undone.`
