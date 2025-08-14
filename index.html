@@ -2289,9 +2289,20 @@
                     } else {
                         recordDetailsMembershipExpiresContainer.style.display = 'block';
                     }
-
-                    recordDetailForm.querySelector('button[type="submit"]').disabled = false;
-                    recordDetailsDeleteRecordBtn.disabled = true;
+					// Toggle delete button visibility by role
+					if (isPrimary) {
+						// Primary: hide the delete button entirely
+						recordDetailsDeleteRecordBtn.classList.add('hidden');   // Tailwind: display: none
+						recordDetailsDeleteRecordBtn.disabled = true;
+						recordDetailsDeleteRecordBtn.title = 'Primary members cannot be deleted.';
+					} else {
+						// Secondary: show & enable the button
+						recordDetailsDeleteRecordBtn.classList.remove('hidden');
+						recordDetailsDeleteRecordBtn.disabled = false;
+						recordDetailsDeleteRecordBtn.title = '';
+					}
+					recordDetailForm.querySelector('button[type="submit"]').disabled = false;
+                    // recordDetailsDeleteRecordBtn.disabled = false;
                     recordDetailsCloseBtn.disabled = false;
                 } else {
                     showMessage('Record not found for the given ID, Name, and Last Name.', 'error');
