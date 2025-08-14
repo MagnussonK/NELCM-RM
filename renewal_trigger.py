@@ -102,7 +102,7 @@ def draw_letter_page(p, member_data):
     p.drawText(text)
     p.showPage()
 
-def send_pdf_email(pdf_buffer, recipient):
+def send_pdf_email(pdf_buffer, recipients):
     SENDER_EMAIL = "Northeast Louisiana Childrens Museum <nelcm98@gmail.com>"
     SUBJECT = f"Monthly Renewal Mailer PDF - {date.today().strftime('%B %Y')}"
     BODY_TEXT = "Attached is the generated PDF containing renewal letters for members expiring this month."
@@ -115,26 +115,32 @@ def send_pdf_email(pdf_buffer, recipient):
         logger.error(f"Could not retrieve SMTP credentials for PDF mailer: {e}")
         return False
 
+    # Normalize recipients into a list
+    if isinstance(recipients, str):
+        recipients = [addr.strip() for addr in recipients.split(',') if addr.strip()]
+
     msg = MIMEMultipart()
     msg['Subject'] = SUBJECT
     msg['From'] = SENDER_EMAIL
-    msg['To'] = recipient
+    msg['To'] = ", ".join(recipients)  # visible To header
     msg.attach(MIMEText(BODY_TEXT, 'plain'))
 
     pdf_attachment = MIMEApplication(pdf_buffer.read(), _subtype="pdf")
-    pdf_attachment.add_header('Content-Disposition', 'attachment', filename=f"renewal_mailer_{date.today().strftime('%Y_%m')}.pdf")
+    pdf_attachment.add_header('Content-Disposition', 'attachment',
+                              filename=f"renewal_mailer_{date.today().strftime('%Y_%m')}.pdf")
     msg.attach(pdf_attachment)
 
     try:
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL(SES_SMTP_HOST, SES_SMTP_PORT, context=context) as server:
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            server.sendmail(SENDER_EMAIL, recipient, msg.as_string())
-            logger.info(f"Renewal mailer PDF successfully sent to {recipient}")
+            server.sendmail(SENDER_EMAIL, recipients, msg.as_string())
+            logger.info(f"Renewal mailer PDF successfully sent to {', '.join(recipients)}")
         return True
     except Exception as e:
-        logger.error(f"SMTP failed to send PDF mailer to {recipient}: {e}")
+        logger.error(f"SMTP failed to send PDF mailer to {', '.join(recipients)}: {e}")
         return False
+
 
 def handler(event, context):
     logger.info("Starting monthly renewal process...")
