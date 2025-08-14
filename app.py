@@ -128,6 +128,16 @@ def get_data():
 
     cursor = conn.cursor()
     try:
+        today_str = date.today().strftime('%Y-%m-%d')
+        cursor.execute("""
+            UPDATE family
+            SET active_flag = CASE
+                WHEN membership_expires < ? AND founding_family = 0 THEN 0
+                ELSE active_flag
+            END
+        """, today_str)
+        conn.commit()
+        
         query = """
             SELECT
                 m.member_id, m.name, m.last_name, m.phone, m.birthday, m.gender,
