@@ -323,6 +323,11 @@ def add_record():
         birth_year
         )
 
+        today = date.today()
+        if membership_expires and membership_expires[:7] == today.strftime("%Y-%m"):
+            renewal_email_sent = 0
+        else:
+            renewal_email_sent = 1
 
         mem_start_date = date.today()
         expiry_year = mem_start_date.year + 1
@@ -331,12 +336,16 @@ def add_record():
         membership_expires = date(expiry_year, expiry_month, last_day)
 
         cursor.execute("""
-            INSERT INTO family (member_id, address, city, state, zip_code, email, founding_family, mem_start_date, membership_expires, active_flag, renewal_email_sent)
+            INSERT INTO family (
+                member_id, address, city, state, zip_code, email, founding_family,
+                mem_start_date, membership_expires, active_flag, renewal_email_sent
+            )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         member_id, data.get('address'), data.get('city'), data.get('state'), data.get('zip_code'),
-        data.get('email'), data.get('founding_family', False), mem_start_date, membership_expires, True, False)
-        
+        data.get('email'), founding_family, mem_start_date, membership_expires, True, renewal_email_sent
+        )
+
         conn.commit()
         email_details = {
             "email_type": "welcome",
