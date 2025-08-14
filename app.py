@@ -309,11 +309,20 @@ def add_record():
             return jsonify({"error": f"Generated Member ID '{member_id}' already exists. Please modify the name slightly to create a unique ID."}), 409
 
         cursor.execute("""
-            INSERT INTO members (member_id, name, last_name, phone, birthday, gender, primary_member, secondary_member)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO members (member_id, name, last_name, phone, gender, primary_member, secondary_member, birth_month_day, birth_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, 
-        member_id, data.get('name'), data.get('last_name'), data.get('phone'),
-        data.get('birthday'), data.get('gender'), True, False)
+        member_id,
+        data.get('name'),
+        data.get('last_name'),
+        data.get('phone'),
+        g,  # your normalized gender
+        True,
+        False,
+        birth_month_day,
+        birth_year
+        )
+
 
         mem_start_date = date.today()
         expiry_year = mem_start_date.year + 1
@@ -539,14 +548,34 @@ def add_secondary_member():
     
     cursor = conn.cursor()
     try:
+        # Birthday normalization (force 01-01 default)
+        birthday_iso = (data.get('birthday') or '').strip() or None
+        birth_month_day = '01-01'
+        birth_year = None
+        if birthday_iso:
+            try:
+                y, m, d = map(int, birthday_iso.split('-'))
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    birth_month_day = f"{m:02d}-{d:02d}"
+                    birth_year = y
+            except Exception:
+                pass
+
         cursor.execute("""
-            INSERT INTO members (member_id, name, last_name, phone, birthday, gender, primary_member, secondary_member)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, 
-        primary_member_id, data.get('name'), data.get('last_name'),
-        data.get('phone'), data.get('birthday'), data.get('gender'),
-        False, True)
-        
+            INSERT INTO members (member_id, name, last_name, phone, gender, primary_member, secondary_member, birth_month_day, birth_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        primary_member_id,
+        data.get('name'),
+        data.get('last_name'),
+        data.get('phone'),
+        data.get('gender'),
+        False,
+        True,
+        birth_month_day,
+        birth_year
+        )
+
         conn.commit()
         return jsonify({"message": "Secondary member added successfully!"}), 201
     except pyodbc.Error as ex:
