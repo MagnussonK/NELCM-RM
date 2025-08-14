@@ -54,7 +54,7 @@ def send_email_smtp(recipient_email, member_name, email_type, data={}):
     """
     Sends an email using the SMTP protocol over port 465.
     """
-    SENDER_EMAIL = "The Childrens Museum <nelcm98@gmail.com>"
+    SENDER_EMAIL = "Northeast Louisiana Childrens Museum <nelcm98@gmail.com>"
     SUBJECT = ""
     BODY_HTML = ""
 
@@ -65,7 +65,7 @@ def send_email_smtp(recipient_email, member_name, email_type, data={}):
             logger.error("Expiration date missing for renewal reminder.")
             return False
         
-        SUBJECT = "Your Children's Museum Membership Is Expiring Soon!"
+        SUBJECT = "Your Northeast Louisiana Children's Museum Membership Is Expiring Soon!"
         BODY_HTML = f"""
         <html><head></head><body>
           <h2>Time to Renew Your Membership!</h2>
@@ -74,7 +74,7 @@ def send_email_smtp(recipient_email, member_name, email_type, data={}):
             <b>{expiration_date.strftime('%B %d, %Y')}</b>.</p>
           <p>Renewing is easy! Simply visit our front desk on your next visit to continue your adventure with us.</p>
           <p>We look forward to seeing you again soon!</p><br>
-          <p>Sincerely,</p><p><b>The Children's Museum Team</b></p>
+          <p>Sincerely,</p><p><b>Northeast Louisiana Children's Museum Team</b></p>
         </body></html>
         """
     elif email_type == 'welcome':
@@ -86,7 +86,7 @@ def send_email_smtp(recipient_email, member_name, email_type, data={}):
           <p>We are so excited to have you as a new member of The Children's Museum. 
              Your membership is your ticket to a year of exploration, imagination, and fun!</p>
           <p>We can't wait to see you soon!</p><br>
-          <p>Sincerely,</p><p><b>The Children's Museum Team</b></p>
+          <p>Sincerely,</p><p><b>Northeast Louisiana Children's Museum Team</b></p>
         </body></html>
         """
     elif email_type == 'renewal_thank_you':
@@ -95,11 +95,11 @@ def send_email_smtp(recipient_email, member_name, email_type, data={}):
         <html><head></head><body>
           <h2>Thank You For Your Support!</h2>
           <p>Dear {member_name},</p>
-          <p>Thank you for renewing your membership with The Children's Museum! 
+          <p>Thank you for renewing your membership with Northeast Louisiana Children's Museum! 
              Your continued support helps us provide a creative and educational space for children in our community. 
-             We're thrilled to have you with us for another year of adventure.</p>
+             We're thrilled to have you with us for another year of adventure!</p>
           <p>Get ready for more fun!</p><br>
-          <p>Sincerely,</p><p><b>The Children's Museum Team</b></p>
+          <p>Sincerely,</p><p><b>Northeast Louisiana Children's Museum Team</b></p>
         </body></html>
         """
     else:

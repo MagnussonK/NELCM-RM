@@ -69,7 +69,7 @@ def draw_letter_page(p, member_data):
 
     width, height = letter
     p.setFont("Helvetica", 10)
-    p.drawString(0.5 * inch, height - 0.5 * inch, "The Children's Museum")
+    p.drawString(0.5 * inch, height - 0.5 * inch, "Northeast Louisiana Children's Museum")
     p.drawString(0.5 * inch, height - 0.65 * inch, "323 Walnut St.")
     p.drawString(0.5 * inch, height - 0.8 * inch, "Monroe, LA 71201")
 
@@ -85,7 +85,7 @@ def draw_letter_page(p, member_data):
     text.setLeading(14)
     text.textLine(f"Dear {full_name},")
     text.textLine("")
-    text.textLine("Thank you for being a valued member of The Children's Museum!")
+    text.textLine("Thank you for being a valued member of Northeast Louisiana Children's Museum!")
     text.textLine("")
     text.textLine("This is a friendly reminder that your family's membership is scheduled to expire on")
     if expires_date:
@@ -98,12 +98,12 @@ def draw_letter_page(p, member_data):
     text.textLine("We look forward to seeing you again soon!")
     text.textLine("")
     text.setFont("Helvetica-Bold", 12)
-    text.textLine("The Children's Museum Team")
+    text.textLine("Northeast Louisiana Children's Museum Team")
     p.drawText(text)
     p.showPage()
 
 def send_pdf_email(pdf_buffer, recipient):
-    SENDER_EMAIL = "The Childrens Museum <nelcm98@gmail.com>"
+    SENDER_EMAIL = "Northeast Louisiana Childrens Museum <nelcm98@gmail.com>"
     SUBJECT = f"Monthly Renewal Mailer PDF - {date.today().strftime('%B %Y')}"
     BODY_TEXT = "Attached is the generated PDF containing renewal letters for members expiring this month."
 
@@ -191,7 +191,7 @@ def handler(event, context):
         p.save()
         buffer.seek(0)
 
-        send_pdf_email(buffer, "kris@kedainsights.com")
+        send_pdf_email(buffer, "kris@kedainsights.com, nelcmsarah@gmail.com")
 
         # ✅ Only queue emails for members who haven't received one
         sqs_queue_url = os.environ.get('SQS_QUEUE_URL')
