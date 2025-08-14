@@ -205,9 +205,8 @@ def add_record():
     """
     Create a NEW family with a PRIMARY member.
 
-    Adjustments:
     - Frontend supplies a single 'birthday' (YYYY-MM-DD). We store only birth_month_day (MM-DD) and birth_year.
-    - If birthday is missing/invalid, default birth_month_day to '01-01' to satisfy NOT NULL constraint; birth_year stays NULL.
+    - If birthday is missing/invalid, default birth_month_day to '01-01' to satisfy NOT NULL; birth_year stays NULL.
     - Provide defaults for mem_start_date (today) and membership_expires (EOM 12 months later) unless founding_family=1.
     """
     data = request.json or {}
@@ -232,7 +231,6 @@ def add_record():
                 birth_month_day = f"{m:02d}-{d:02d}"
                 birth_year = y
         except Exception:
-            # keep defaults
             pass
 
     # -- Gender normalization -> bit/NULL
@@ -250,7 +248,7 @@ def add_record():
         g = None
 
     # -- Family defaults
-    from datetime import date
+    from datetime import date as _date
     import calendar as _cal
 
     def end_of_month(dt):
@@ -267,13 +265,12 @@ def add_record():
     else:
         founding_family = 0
 
-    mem_start_date = (data.get('mem_start_date') or date.today().isoformat())
+    mem_start_date = (data.get('mem_start_date') or _date.today().isoformat())
     try:
         y, m, d = map(int, mem_start_date.split('-'))
-        from datetime import date as _date
         mem_start_dt = _date(y, m, d)
     except Exception:
-        mem_start_dt = date.today()
+        mem_start_dt = _date.today()
         mem_start_date = mem_start_dt.isoformat()
 
     if founding_family == 1:
@@ -282,7 +279,6 @@ def add_record():
         # Add 12 months, then set to EOM
         new_year = mem_start_dt.year + (1 if mem_start_dt.month + 12 > 12 else 0)
         new_month = ((mem_start_dt.month + 12 - 1) % 12) + 1
-        from datetime import date as _date
         tmp = _date(new_year, new_month, 1)
         membership_expires = end_of_month(tmp).isoformat()
 
@@ -292,43 +288,50 @@ def add_record():
     
     cursor = conn.cursor()
     try:
-        first_name = data.get('name', '')
-        last_name = data.get('last_name', '')
-        if not first_name or not last_name:
-            return jsonify({"error": "First name and last name are required."}), 400
-        
-        last_name_part = (last_name + '   ')[:3]
-        first_name_part = (first_name + '  ')[:2]
-        part1 = last_name_part[0].upper() + last_name_part[1:3].lower()
-        part2 = first_name_part[0].upper() + first_name_part[1:].lower()
-        member_id = part1 + part2
+        # Ensure unique member_id
+        suffix = 1
+        while True:
+            cursor.execute("SELECT COUNT(*) FROM members WHERE member_id = ?", member_id)
+            (cnt,) = cursor.fetchone()
+            if cnt == 0:
+                break
+            suffix += 1
+            member_id = f"{base_id}-{suffix:02d}"
 
-        cursor.execute("SELECT COUNT(*) FROM members WHERE member_id = ?", member_id)
-        count = cursor.fetchone()[0]
-        if count > 0:
-            return jsonify({"error": f"Generated Member ID '{member_id}' already exists. Please modify the name slightly to create a unique ID."}), 409
-
+        # Insert primary member (NO 'birthday' column)
         cursor.execute("""
-            INSERT INTO members (member_id, name, last_name, phone, birthday, gender, primary_member, secondary_member)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, 
+            INSERT INTO members
+                (member_id, name, last_name, phone, gender, primary_member, secondary_member,
+                 birth_month_day, birth_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
         member_id, data.get('name'), data.get('last_name'), data.get('phone'),
-        data.get('birthday'), data.get('gender'), True, False)
+        g, True, False, birth_month_day, birth_year)
 
-        mem_start_date = date.today()
-        expiry_year = mem_start_date.year + 1
-        expiry_month = mem_start_date.month
-        _, last_day = calendar.monthrange(expiry_year, expiry_month)
-        membership_expires = date(expiry_year, expiry_month, last_day)
+        # Compute default dates again in proper types
+        from datetime import date as _date2
+        msd_dt = _date2.fromisoformat(mem_start_date)
+        if founding_family == 1:
+            membership_expires_dt = None
+        else:
+            exp_year = msd_dt.year + 1
+            exp_month = msd_dt.month
+            import calendar as _cal2
+            _, last_day = _cal2.monthrange(exp_year, exp_month)
+            membership_expires_dt = _date2(exp_year, exp_month, last_day)
 
         cursor.execute("""
-            INSERT INTO family (member_id, address, city, state, zip_code, email, founding_family, mem_start_date, membership_expires, active_flag, renewal_email_sent)
+            INSERT INTO family
+                (member_id, address, city, state, zip_code, email, founding_family,
+                 mem_start_date, membership_expires, active_flag, renewal_email_sent)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         member_id, data.get('address'), data.get('city'), data.get('state'), data.get('zip_code'),
-        data.get('email'), data.get('founding_family', False), mem_start_date, membership_expires, True, False)
+        data.get('email'), bool(founding_family), msd_dt, membership_expires_dt, True, False)
         
         conn.commit()
+
+        # Queue welcome email (optional if email exists)
         email_details = {
             "email_type": "welcome",
             "email": data.get('email'),
@@ -339,8 +342,7 @@ def add_record():
         return jsonify({"message": "Record added successfully!", "member_id": member_id}), 201
     except pyodbc.Error as ex:
         conn.rollback()
-        sqlstate = ex.args[0]
-        logging.error(f"Error adding record: {ex} - ({sqlstate})")
+        logging.error(f"Error adding record: {ex}")
         return jsonify({"error": f"Database error: {ex}"}), 500
     finally:
         if cursor:
@@ -528,10 +530,42 @@ def delete_record(member_id):
 
 @app.route('/api/add_secondary_member', methods=['POST'])
 def add_secondary_member():
-    data = request.json
-    primary_member_id = data.get('primary_member_id')
+    """
+    Add a secondary member to an existing family.
+    - Map 'birthday' (YYYY-MM-DD) to birth_month_day/birth_year.
+    - Force birth_month_day='01-01' if missing/invalid (NOT NULL).
+    """
+    data = request.json or {}
+    primary_member_id = (data.get('primary_member_id') or '').strip()
     if not primary_member_id:
         return jsonify({"error": "Primary member ID is required."}), 400
+
+    # Birthday normalization
+    birthday_iso = (data.get('birthday') or '').strip() or None
+    birth_month_day = '01-01'
+    birth_year = None
+    if birthday_iso:
+        try:
+            y, m, d = map(int, birthday_iso.split('-'))
+            if 1 <= m <= 12 and 1 <= d <= 31:
+                birth_month_day = f"{m:02d}-{d:02d}"
+                birth_year = y
+        except Exception:
+            pass
+
+    # Gender normalization
+    g = data.get('gender')
+    if isinstance(g, str):
+        s = g.strip().lower()
+        if s in ('true','1','male','m'): g = 1
+        elif s in ('false','0','female','f'): g = 0
+        else: g = None
+    elif isinstance(g, bool):
+        g = 1 if g else 0
+    elif g in (0,1):
+        g = int(g)
+    else:
+        g = None
 
     conn = get_db_connection()
     if conn is None:
@@ -539,20 +573,26 @@ def add_secondary_member():
     
     cursor = conn.cursor()
     try:
+        # Ensure parent family exists
+        cursor.execute("SELECT 1 FROM family WHERE member_id = ?", primary_member_id)
+        if not cursor.fetchone():
+            return jsonify({"error": "Primary family not found."}), 404
+
+        # Insert member (NO 'birthday' column)
         cursor.execute("""
-            INSERT INTO members (member_id, name, last_name, phone, birthday, gender, primary_member, secondary_member)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, 
+            INSERT INTO members
+                (member_id, name, last_name, phone, gender, primary_member, secondary_member,
+                 birth_month_day, birth_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
         primary_member_id, data.get('name'), data.get('last_name'),
-        data.get('phone'), data.get('birthday'), data.get('gender'),
-        False, True)
+        data.get('phone'), g, False, True, birth_month_day, birth_year)
         
         conn.commit()
         return jsonify({"message": "Secondary member added successfully!"}), 201
     except pyodbc.Error as ex:
         conn.rollback()
-        sqlstate = ex.args[0]
-        logging.error(f"Error adding secondary member to family {primary_member_id}: {sqlstate} - {ex}")
+        logging.error(f"Error adding secondary member to family {primary_member_id}: {ex}")
         return jsonify({"error": f"Database error: {ex}"}), 500
     finally:
         if cursor:
@@ -560,7 +600,7 @@ def add_secondary_member():
         if conn:
             conn.close()
 
-@app.route('/api/visits/today/count', methods=['GET'])
+('/api/visits/today/count', methods=['GET'])
 def get_today_visit_count():
     conn = get_db_connection()
     if conn is None:
