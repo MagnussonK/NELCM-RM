@@ -203,9 +203,89 @@ def update_expired_memberships():
 @app.route('/api/add_record', methods=['POST'])
 def add_record():
     """
-    Adds a new primary member record, creating entries in both members and family tables.
+    Create a NEW family with a PRIMARY member.
+
+    Adjustments:
+    - Frontend supplies a single 'birthday' (YYYY-MM-DD). We store only birth_month_day (MM-DD) and birth_year.
+    - If birthday is missing/invalid, default birth_month_day to '01-01' to satisfy NOT NULL constraint; birth_year stays NULL.
+    - Provide defaults for mem_start_date (today) and membership_expires (EOM 12 months later) unless founding_family=1.
     """
-    data = request.json
+    data = request.json or {}
+
+    first = (data.get('name') or '').strip()
+    last  = (data.get('last_name') or '').strip()
+    if not first or not last:
+        return jsonify({"error": "First and last name are required."}), 400
+
+    # Build base member_id like LllFf, then uniquify with -NN
+    base_id = (last[:3].ljust(3))[:3].title() + (first[:2].ljust(2))[:2].title()
+    member_id = base_id
+
+    # -- Birthday normalization -> birth_month_day / birth_year
+    birthday_iso = (data.get('birthday') or '').strip() or None
+    birth_month_day = '01-01'   # NOT NULL column default
+    birth_year = None
+    if birthday_iso:
+        try:
+            y, m, d = map(int, birthday_iso.split('-'))
+            if 1 <= m <= 12 and 1 <= d <= 31:
+                birth_month_day = f"{m:02d}-{d:02d}"
+                birth_year = y
+        except Exception:
+            # keep defaults
+            pass
+
+    # -- Gender normalization -> bit/NULL
+    g = data.get('gender')
+    if isinstance(g, str):
+        s = g.strip().lower()
+        if s in ('true','1','male','m'): g = 1
+        elif s in ('false','0','female','f'): g = 0
+        else: g = None
+    elif isinstance(g, bool):
+        g = 1 if g else 0
+    elif g in (0,1):
+        g = int(g)
+    else:
+        g = None
+
+    # -- Family defaults
+    from datetime import date
+    import calendar as _cal
+
+    def end_of_month(dt):
+        _, last_day = _cal.monthrange(dt.year, dt.month)
+        return dt.replace(day=last_day)
+
+    founding_family = data.get('founding_family')
+    if isinstance(founding_family, str):
+        founding_family = 1 if founding_family.strip().lower() in ('true','1','yes') else 0
+    elif isinstance(founding_family, bool):
+        founding_family = 1 if founding_family else 0
+    elif founding_family in (0,1):
+        founding_family = int(founding_family)
+    else:
+        founding_family = 0
+
+    mem_start_date = (data.get('mem_start_date') or date.today().isoformat())
+    try:
+        y, m, d = map(int, mem_start_date.split('-'))
+        from datetime import date as _date
+        mem_start_dt = _date(y, m, d)
+    except Exception:
+        mem_start_dt = date.today()
+        mem_start_date = mem_start_dt.isoformat()
+
+    if founding_family == 1:
+        membership_expires = None
+    else:
+        # Add 12 months, then set to EOM
+        new_year = mem_start_dt.year + (1 if mem_start_dt.month + 12 > 12 else 0)
+        new_month = ((mem_start_dt.month + 12 - 1) % 12) + 1
+        from datetime import date as _date
+        tmp = _date(new_year, new_month, 1)
+        membership_expires = end_of_month(tmp).isoformat()
+
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
