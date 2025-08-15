@@ -178,7 +178,7 @@ def handler(event, context):
             # Call the SMTP email function
             email_sent = send_email_smtp(
                 recipient_email=email,
-                member_name=f"{name} {last_name}",
+                member_name=f"{last_name} Family",
                 email_type=email_type,
                 data=email_data
             )
