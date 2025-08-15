@@ -519,6 +519,10 @@
         </div>
     </div>
 
+<script>
+  window.apiFetch = (path, init = {}) => fetch(window.BASE_API_URL + path, init);
+  window.dispatchEvent(new Event('auth-ready')); // so app.js starts
+</script>
 
 <script defer src="app.js"></script>
 
