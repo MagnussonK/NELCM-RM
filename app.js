@@ -19,8 +19,11 @@
         let currentCalendarDate = new Date(); // Tracks the month/year displayed in the calendar
         let allMemberVisitedDates = []; // Stores all visit dates for the current member as Date objects
 
-        // Get common DOM elements
-        const messageBox = document.getElementById('messageBox');
+        // --- Global Configuration ---
+		const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+        
+		// Get common DOM elements
+		const messageBox = document.getElementById('messageBox');
         const globalLoadingIndicator = document.getElementById('globalLoadingIndicator');
 		const familyDetailsContent = document.getElementById('familyDetailsContent');
 
