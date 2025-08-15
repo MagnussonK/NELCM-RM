@@ -42,7 +42,9 @@ functions:
     image: appimage
     timeout: 5
     events:
-      - httpApi: 'ANY /api/{proxy+}'
+      - httpApi:
+        method: ANY
+        path: /api/{proxy+}
         authorizer:
             name: cognitoJwt
 
