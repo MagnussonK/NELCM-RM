@@ -1700,10 +1700,18 @@
         memberVisitsCloseBtn.addEventListener('click', () => showView('familyDetailsView'));
 
         // --- Initial Load ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            await fetchAllData();
-            showView('homeView');
-        });
+		function startApp() {
+		  fetchAllData().then(() => showView('homeView'));
+		}
+
+		if (window.apiFetch) {
+		  // Auth/Amplify already inited
+		  startApp();
+		} else {
+		  // Wait until index.html announces Auth is ready
+		  window.addEventListener('auth-ready', startApp, { once: true });
+		}
+
 
         // Expose functions to global scope for onclick attributes
         window.editIndividualMember = editIndividualMember;

@@ -559,9 +559,6 @@
 
 	  <!-- inside initAmplify(), after setting window.apiFetch and wiring buttons -->
 	  window.dispatchEvent(new Event('auth-ready'));
-	  function startApp() {
-		fetchAllData().then(() => showView('homeView'));
-	  }
 
 	  if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', () => {
