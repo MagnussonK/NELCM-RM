@@ -6,10 +6,6 @@
         let currentMemberLastName = null; // Used by recordDetails
         let currentIsPrimary = false; // Used by recordDetails to determine editable fields
 
-        // --- Global Configuration ---
-        
-		const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
-		
         // Global variables for Add Visit View
         let currentAddVisitMemberId = null;
         let currentAddVisitName = null;
@@ -26,6 +22,8 @@
         // Get common DOM elements
         const messageBox = document.getElementById('messageBox');
         const globalLoadingIndicator = document.getElementById('globalLoadingIndicator');
+		const familyDetailsContent = document.getElementById('familyDetailsContent');
+
 
         // Get all view sections
         const homeView = document.getElementById('homeView');
@@ -279,7 +277,7 @@
             showLoadingIndicator();
             try {
                 // Use the new API endpoint to get today's visits
-                const response = await fetch(`${BASE_API_URL}/visits/today/grouped`);
+				const response = await apiFetch('/visits/today/grouped');
 				if (!response.ok) {
 					const errorData = await response.json();
 					throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
@@ -340,7 +338,7 @@
             			
             try {
                 // Use the same variable name here
-                const response = await fetch(`${BASE_API_URL}/visits/today/count`);
+                const response = await apiFetch('/visits/today/count');
         
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -381,7 +379,7 @@
         async function triggerMembershipExpiryUpdate() {
             console.log('Triggering backend membership expiry update...');
             try {
-                const response = await fetch(`${BASE_API_URL}/update_expired_memberships`, { method: 'PUT' });
+                const response = await apiFetch('/update_expired_memberships', { method: 'PUT' });
                 if (!response.ok) {
                     const errorData = await response.json();
                     console.error('Backend expiry update error:', errorData);
@@ -655,7 +653,7 @@
             homeRefreshSpinner.classList.remove('hidden');
         
             try {
-                const response = await fetch(`${BASE_API_URL}/data`);
+                const response = await apiFetch('/data');
         
                 if (!response.ok) {
                     let errorDetails = 'The server returned an error response.';
@@ -724,7 +722,7 @@
                         visit_datetime: formattedDateTime
                     };
 
-                    const response = await fetch(`${BASE_API_URL}/add_visit`, {
+                    const response = await apiFetch('/add_visit', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(visitData)
@@ -769,7 +767,7 @@
 
             showLoadingIndicator();
             try {
-                const response = await fetch(`${BASE_API_URL}/send_renewal_emails`, {
+                const response = await apiFetch('/send_renewal_emails', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                 });
@@ -986,7 +984,7 @@
             };
             
             try {
-					const response = await fetch(`${BASE_API_URL}/add_record`, {
+					const response = await apiFetch('/add_record', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(recordData)
@@ -1162,7 +1160,7 @@
                     is_primary: true // Ensure backend knows this is a primary member update
                 };
 
-                const response = await fetch(`${BASE_API_URL}/update_record/${primaryMemberRecord.member_id}`, {
+                const response = await apiFetch(`/update_record/${primaryMemberRecord.member_id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatedData)
@@ -1351,7 +1349,7 @@
             }
 
             try {
-                const response = await fetch(`${BASE_API_URL}/update_record/${currentRecordDetailsFamilyId}`, {
+                const response = await apiFetch(`/update_record/${currentRecordDetailsFamilyId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(recordData)
@@ -1389,7 +1387,7 @@
                 globalLoadingIndicator.classList.remove('hidden');
                 const requestBody = currentRecordDetailsIsPrimary ? {} : { name: currentRecordDetailsName, last_name: currentRecordDetailsLastName };
                 try {
-                    const response = await fetch(`${BASE_API_URL}/delete_record/${currentRecordDetailsFamilyId}`, {
+                    const response = await apiFetch(`/delete_record/${currentRecordDetailsFamilyId}`, {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(requestBody)
@@ -1473,7 +1471,7 @@
             if (confirm(`Are you sure you want to delete ${name} ${lastName} from this family?`)) {
                 globalLoadingIndicator.classList.remove('hidden');
                 try {
-                    const response = await fetch(`${BASE_API_URL}/delete_record/${memberId}`, {
+                    const response = await apiFetch(`/delete_record/${memberId}`, {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name: name, last_name: lastName })
@@ -1524,7 +1522,7 @@
                 gender: genderValue,
             };
             try {
-                const response = await fetch(`${BASE_API_URL}/add_secondary_member`, {
+                const response = await apiFetch('/add_secondary_member', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(recordData)
@@ -1591,7 +1589,7 @@
                 visit_datetime: formattedDateTime
             };
             try {
-                const response = await fetch(`${BASE_API_URL}/add_visit`, {
+                const response = await apiFetch('/add_visit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(visitData)
@@ -1659,7 +1657,7 @@
             currentCalendarDate = new Date();
 
             try {
-                const response = await fetch(`${BASE_API_URL}/visits/${encodeURIComponent(memberId)}/${encodeURIComponent(name)}/${encodeURIComponent(lastName)}`);
+                const response = await apiFetch(`/visits/${encodeURIComponent(memberId)}/${encodeURIComponent(name)}/${encodeURIComponent(lastName)}`);
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
@@ -1702,10 +1700,18 @@
         memberVisitsCloseBtn.addEventListener('click', () => showView('familyDetailsView'));
 
         // --- Initial Load ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            await fetchAllData();
-            showView('homeView');
-        });
+		function startApp() {
+		  fetchAllData().then(() => showView('homeView'));
+		}
+
+		if (window.apiFetch) {
+		  // Auth/Amplify already inited
+		  startApp();
+		} else {
+		  // Wait until index.html announces Auth is ready
+		  window.addEventListener('auth-ready', startApp, { once: true });
+		}
+
 
         // Expose functions to global scope for onclick attributes
         window.editIndividualMember = editIndividualMember;
