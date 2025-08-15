@@ -1558,9 +1558,9 @@
                 
                 tableHtml += `<td class="px-6 py-4 whitespace-nowrap text-center">
                                     <button type="button" 
-                                            onclick="checkInFamily('${rowId}')" 
+                                            onclick="event.stopPropagation(); checkInFamily('${rowId}')" 
                                             class="action-button btn-primary text-xs px-3 py-1 bg-green-600 hover:bg-green-700">
-                                        Check-in Family
+                                        Check-In Family
                                     </button>
                                 </td>`;
                 tableHtml += '</tr>';
@@ -1746,6 +1746,7 @@
                 }
 
                 await fetchAllData();
+				showView('homeView');
 
             } catch (error) {
                 console.error('Error during family check-in:', error);
