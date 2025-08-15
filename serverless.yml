@@ -1,73 +1,113 @@
 service: nelcm-record-manager-backend
+frameworkVersion: '3'
+
+plugins:
+  - serverless-wsgi
+  - serverless-python-requirements
 
 provider:
   name: aws
-  runtime: python3.9
   region: us-east-1
+  runtime: python3.9
   architecture: x86_64
-  # Assign the explicitly defined role to all functions
-  iam:
-    role: IamRoleLambdaExecution
+  memorySize: 1024
+  logRetentionInDays: 14
+
   httpApi:
-    cors: true
-  environment:
-    LD_LIBRARY_PATH: /var/task/lib
-    ODBCSYSINI: /var/task
-    SQS_QUEUE_URL: !Ref RenewalEmailQueue
-  ecr:
-    images:
-      appimage:
-        path: ./
-        platform: linux/amd64
+    cors: true # allow all origins; tighten later if needed
+    payload: '2.0'
+
   vpc:
     securityGroupIds:
       - sg-0538cfedbe5d23eb5
     subnetIds:
       - subnet-06ca61fce5f705db2
-      - subnet-01ae22cae3a9c51f5
+
+  environment:
+    # PyODBC / ODBC driver search paths (you package these with your function code)
+    LD_LIBRARY_PATH: /var/task/lib
+    ODBCSYSINI: /var/task
+    # App config
+    SQS_QUEUE_URL: !Ref RenewalEmailQueue
+
+  iam:
+    role:
+      statements:
+        # Secrets Manager to fetch DB credentials (secret name "nelcm-db")
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource: arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*
+        # SES to send email
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+            - ses:SendRawEmail
+          Resource: "*"
+        # SQS to enqueue and consume renewal emails
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource: !GetAtt RenewalEmailQueue.Arn
+
+custom:
+  wsgi:
+    app: app.app          # module.object of your Flask app
+    packRequirements: false
+  pythonRequirements:
+    dockerizePip: true
+    slim: true
+    strip: false
+
+package:
+  individually: true
+  patterns:
+    - 'app.py'
+    - 'renewal_trigger.py'
+    - 'email_sender.py'
+    - 'lib/**'          # your ODBC shared libs (msodbcsql, libodbc, etc.)
+    - 'odbc.ini'
+    - '!**/*.md'
+    - '!node_modules/**'
+    - '!venv/**'
+    - '!.venv/**'
 
 functions:
+  # Flask API via serverless-wsgi
   api:
-    image: appimage
-    timeout: 5
+    handler: wsgi_handler.handler
+    timeout: 29
     events:
       - httpApi:
-        method: ANY
-        path: /api/{proxy+}
+          method: ANY
+          path: /api
+      - httpApi:
+          method: ANY
+          path: /api/{proxy+}
 
-  renewalEmailTrigger:
-    image:
-      name: appimage
-      command:
-        - renewal_trigger.handler
-    events:
-      - schedule: cron(0 12 1 * ? *)
-      
+  # Monthly renewal process + on-demand HTTP trigger
   renewalMailer:
     handler: renewal_trigger.handler
+    timeout: 120
     events:
-      - http:
-          path: renewals/run
-          method: post
+      # Button in UI can call this directly
+      - httpApi:
+          method: POST
+          path: /api/renewals/run
+      # Automatic on the 1st of every month at 12:00 UTC (06:00/07:00 CT depending on DST)
+      - schedule: cron(0 12 1 * ? *)
 
-  sesHandler:
-    image:
-      name: appimage
-      command:
-        - ses_handler.handler
-    events:
-      - sns: nelcm-ses-events
-
+  # SQS consumer that actually sends emails + updates flags
   emailSender:
-    image:
-      name: appimage
-      command:
-        - email_sender.handler
-    timeout: 15
+    handler: email_sender.handler
+    timeout: 120
     events:
       - sqs:
           arn: !GetAtt RenewalEmailQueue.Arn
-          batchSize: 5
+          batchSize: 1
 
 resources:
   Resources:
@@ -75,42 +115,20 @@ resources:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:service}-${sls:stage}-renewal-email-queue
+        VisibilityTimeout: 120
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt RenewalEmailDLQ.Arn
+          maxReceiveCount: 3
 
-    IamRoleLambdaExecution:
-      Type: AWS::IAM::Role
+    RenewalEmailDLQ:
+      Type: AWS::SQS::Queue
       Properties:
-        RoleName: ${self:service}-${sls:stage}-lambda-role
-        AssumeRolePolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service:
-                  - lambda.amazonaws.com
-              Action: sts:AssumeRole
-              
-        ManagedPolicyArns:
-          - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-        Policies:
-          - PolicyName: ${self:service}-${sls:stage}-lambda-policy
-            PolicyDocument:
-              Version: '2012-10-17'
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - "secretsmanager:GetSecretValue"
-                  Resource: "arn:aws:secretsmanager:us-east-1:*:secret:nelcm-db-*"
-                - Effect: Allow
-                  Action:
-                    - "ses:SendEmail"
-                    - "ses:SendRawEmail"
-                  Resource: "*"
-                - Effect: Allow
-                  Action:
-                    - "sqs:SendMessage"
-                    - "sqs:ReceiveMessage" # emailSender needs this permission too
-                    - "sqs:DeleteMessage"
-                    - "sqs:GetQueueAttributes"
-                  Resource: !GetAtt RenewalEmailQueue.Arn
-      DependsOn:
-        - RenewalEmailQueue
+        QueueName: ${self:service}-${sls:stage}-renewal-email-dlq
+
+  Outputs:
+    HttpApiUrl:
+      Description: Base URL for the HTTP API
+      Value: https://${aws:accountId}.execute-api.${self:provider.region}.amazonaws.com
+    QueueUrl:
+      Description: Renewal email SQS queue URL
+      Value: !Ref RenewalEmailQueue
