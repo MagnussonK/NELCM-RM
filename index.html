@@ -514,6 +514,16 @@
         </div>
     </div>
 
+<script>
+  // your API base stays the same
+  window.BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+
+  // no Amplify, no token — just plain fetch
+  window.apiFetch = (path, init = {}) => fetch(window.BASE_API_URL + path, init);
+
+  // tell app.js we're "ready" so it can start
+  window.dispatchEvent(new Event('auth-ready'));
+</script>
     
 <script defer src="app.js"></script>
 </body>
