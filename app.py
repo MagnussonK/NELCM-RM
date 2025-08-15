@@ -608,7 +608,7 @@ def get_today_visit_count():
         cursor = conn.cursor()
         today_start = datetime.combine(date.today(), datetime.min.time())
         tomorrow_start = today_start + timedelta(days=1)
-        sql_query = "SELECT COUNT(DISTINCT member_id) FROM Visits WHERE visit_datetime >= ? AND visit_datetime < ?"
+        sql_query = "SELECT COUNT(*) FROM Visits WHERE visit_datetime >= ? AND visit_datetime < ?"
         cursor.execute(sql_query, today_start, tomorrow_start)
         count = cursor.fetchone()[0]
         return jsonify({"count": count})
