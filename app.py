@@ -199,7 +199,7 @@ def get_data():
             conn.close()
 
 @app.route('/api/update_expired_memberships', methods=['PUT'])
-@require_roles("admin")
+# @require_roles("admin")
 def update_expired_memberships():
     """
     Updates the active status of members in the family table whose memberships have expired.
@@ -231,7 +231,7 @@ def update_expired_memberships():
             conn.close()
 
 @app.route('/api/add_record', methods=['POST'])
-@require_roles("admin")
+# @require_roles("admin")
 def add_record():
     """
     Create a NEW family with a PRIMARY member.
@@ -398,7 +398,7 @@ def add_record():
             conn.close()
 
 @app.route('/api/update_record/<member_id>', methods=['PUT'])
-@require_roles("admin")
+# @require_roles("admin")
 def update_record(member_id):
     data = request.json
     conn = get_db_connection()
@@ -476,7 +476,7 @@ def update_record(member_id):
             conn.close()
 
 @app.route('/api/send_renewal_emails', methods=['POST'])
-@require_roles("admin")
+# @require_roles("admin")
 def send_renewal_emails():
     conn = get_db_connection()
     if conn is None: return jsonify({"error": "Database connection failed"}), 500
@@ -543,7 +543,7 @@ def send_renewal_emails():
         if conn: conn.close()
 
 @app.route('/api/delete_record/<member_id>', methods=['DELETE'])
-@require_roles("admin")
+# @require_roles("admin")
 def delete_record(member_id):
     data = request.json
     conn = get_db_connection()
@@ -579,7 +579,7 @@ def delete_record(member_id):
             conn.close()
 
 @app.route('/api/add_secondary_member', methods=['POST'])
-@require_roles("admin")
+# @require_roles("admin")
 def add_secondary_member():
     data = request.json
     primary_member_id = data.get('primary_member_id')
@@ -634,7 +634,7 @@ def add_secondary_member():
             conn.close()
 
 @app.route('/api/visits/today/count', methods=['GET'])
-@require_roles("admin")
+# @require_roles("admin")
 def get_today_visit_count():
     conn = get_db_connection()
     if conn is None:
@@ -656,7 +656,7 @@ def get_today_visit_count():
             conn.close()
 
 @app.route('/api/add_visit', methods=['POST'])
-@require_roles("admin")
+# @require_roles("admin")
 def add_visit():
     data = request.json
     conn = get_db_connection()

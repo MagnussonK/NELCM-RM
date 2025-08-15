@@ -575,8 +575,8 @@
       const btnOut = document.getElementById('btnSignOut');
       const badge  = document.getElementById('userBadge');
 
-      if (btnIn && !btnIn.__wired)  { btnIn.__wired  = true; btnIn.addEventListener('click', () => Auth.federatedSignIn()); }
-      if (btnOut && !btnOut.__wired){ btnOut.__wired = true; btnOut.addEventListener('click', () => Auth.signOut()); }
+      //if (btnIn && !btnIn.__wired)  { btnIn.__wired  = true; btnIn.addEventListener('click', () => Auth.federatedSignIn()); }
+      //if (btnOut && !btnOut.__wired){ btnOut.__wired = true; btnOut.addEventListener('click', () => Auth.signOut()); }
 
       // simple UI toggle
       Auth.currentSession().then(s => {

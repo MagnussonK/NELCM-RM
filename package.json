@@ -30,6 +30,6 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "aws-amplify": "^6.15.3"
+    "aws-amplify": "^6.15.5"
   }
 }
