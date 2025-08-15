@@ -219,8 +219,7 @@
 							<span id="familyCityStateZip" class="detail-value"></span>
 							<span id="familyEmail" class="detail-value mt-2 text-indigo-600 font-semibold"></span>
 						</div>
-    <div id="updateMembershipContainer" class="detail-item">
-                        <div id="updateMembershipContainer" class="detail-item">
+						<div id="updateMembershipContainer" class="detail-item">
                             <span class="detail-label font-bold text-base mb-3 border-b pb-2">Membership Dates:</span>
                             <div class="flex items-end gap-4 pt-2">
                                 <div class="flex-grow space-y-3">
@@ -529,10 +528,10 @@
   Amplify.configure({
     Auth: {
       region: 'us-east-1',
-      userPoolId: 'us-east-1_XXXXXXX',            // <-- your User Pool ID
-      userPoolWebClientId: 'YYYYYYYYYYYYYYYYYY',  // <-- your App client ID (no secret)
+      userPoolId: 'us-east-1_DbvqrCJkl',            // <-- your User Pool ID
+      userPoolWebClientId: 'kd7ovn5929vlj8fpi1f7gvbv4',  // <-- your App client ID (no secret)
       oauth: {
-        domain: 'your-domain.auth.us-east-1.amazoncognito.com',  // <-- set Pool domain in console
+        domain: 'nelcm.auth.us-east-1.amazoncognito.com',  // <-- set Pool domain in console
         scope: ['openid','email','profile'],
         redirectSignIn: window.location.origin + '/',   // <-- add this exact URL in App client "Callback URLs"
         redirectSignOut: window.location.origin + '/',  // <-- add in "Sign out URLs"
@@ -585,32 +584,6 @@
   // Expose apiFetch globally if you want to use it in app.js
   window.apiFetch = apiFetch;
 </script>
-    
 <script defer src="app.js"></script>
-<script>
-  const { Auth } = aws_amplify;
-
-  Auth.configure({
-    region: "us-east-1",
-    userPoolId: "us-east-1_DbvqrCJkl",
-    userPoolWebClientId: "kd7ovn5929vlj8fpi1f7gvbv4",
-  });
-
-  async function getAuthHeader() {
-    try {
-      const session = await Auth.currentSession();
-      const idToken = session.getIdToken().getJwtToken();
-      return { Authorization: `Bearer ${idToken}` };
-    } catch { return {}; }
-  }
-
-  // Wrap your existing fetch calls:
-  async function apiFetch(path, init={}) {
-    const auth = await getAuthHeader();
-    const merged = { ...init, headers: { ...(init.headers||{}), ...auth } };
-    return fetch(`${BASE_API_URL}${path}`, merged);
-  }
-</script>
-
 </body>
 </html>
