@@ -14,8 +14,11 @@
         <div class="text-center mb-6">
             <img src="logo.png" alt="The Childrens Museum Logo" class="mx-auto h-20 sm:h-24 mb-4">
         </div>
-		<button onclick="Auth.federatedSignIn()">Sign in</button>
-		<button onclick="Auth.signOut().then(()=>location.reload())">Sign out</button>
+		<div class="flex items-center gap-2">
+			<button id="btnSignIn"  type="button">Sign in</button>
+			<button id="btnSignOut" type="button" hidden>Sign out</button>
+			<span id="userBadge" style="margin-left:.5rem;"></span>
+		</div>
 
         <div id="messageBox" class="hidden p-3 mb-6 rounded-lg text-center font-medium transition-opacity duration-300 ease-in-out" role="alert"></div>
 
@@ -516,9 +519,74 @@
         </div>
     </div>
 
+<!-- Amplify UMD build -->
+<script src="https://unpkg.com/aws-amplify@6.x/dist/aws-amplify.min.js"></script>
+<script>
+  // Pull the pieces we use off the UMD global
+  const { Amplify, Auth } = aws_amplify;
+
+  // ====== REQUIRED: your Cognito config (Hosted UI) ======
+  Amplify.configure({
+    Auth: {
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_XXXXXXX',            // <-- your User Pool ID
+      userPoolWebClientId: 'YYYYYYYYYYYYYYYYYY',  // <-- your App client ID (no secret)
+      oauth: {
+        domain: 'your-domain.auth.us-east-1.amazoncognito.com',  // <-- set Pool domain in console
+        scope: ['openid','email','profile'],
+        redirectSignIn: window.location.origin + '/',   // <-- add this exact URL in App client "Callback URLs"
+        redirectSignOut: window.location.origin + '/',  // <-- add in "Sign out URLs"
+        responseType: 'code'
+      },
+      storage: window.localStorage
+    }
+  });
+
+  // Simple auth-aware UI toggling
+  async function refreshAuthUI() {
+    const btnIn  = document.getElementById('btnSignIn');
+    const btnOut = document.getElementById('btnSignOut');
+    const badge  = document.getElementById('userBadge');
+
+    try {
+      const session = await Auth.currentSession();
+      const email = session.getIdToken().payload.email || 'Signed in';
+      btnIn.hidden  = true;
+      btnOut.hidden = false;
+      if (badge) badge.textContent = email;
+    } catch {
+      btnIn.hidden  = false;
+      btnOut.hidden = true;
+      if (badge) badge.textContent = '';
+    }
+  }
+
+  // Wire up buttons AFTER DOM is ready
+  window.addEventListener('DOMContentLoaded', () => {
+    const btnIn  = document.getElementById('btnSignIn');
+    const btnOut = document.getElementById('btnSignOut');
+
+    if (btnIn)  btnIn.addEventListener('click', () => Auth.federatedSignIn()); // launches Hosted UI
+    if (btnOut) btnOut.addEventListener('click', () => Auth.signOut());        // logs out & redirects
+
+    refreshAuthUI();
+  });
+
+  // Helper for your API calls (adds Authorization header)
+  async function apiFetch(path, init = {}) {
+    try {
+      const token = (await Auth.currentSession()).getIdToken().getJwtToken();
+      init.headers = { ...(init.headers || {}), Authorization: `Bearer ${token}` };
+    } catch (_) { /* not signed in; call will likely 401 */ }
+    const base = window.BASE_API_URL || ''; // keep your existing global
+    return fetch(`${base}${path}`, init);
+  }
+
+  // Expose apiFetch globally if you want to use it in app.js
+  window.apiFetch = apiFetch;
+</script>
     
 <script defer src="app.js"></script>
-<script src="https://unpkg.com/aws-amplify@6.0.0/dist/aws-amplify.min.js"></script>
 <script>
   const { Auth } = aws_amplify;
 
