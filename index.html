@@ -15,6 +15,12 @@
             <img src="logo.png" alt="The Childrens Museum Logo" class="mx-auto h-20 sm:h-24 mb-4">
         </div>
 
+		<div class="flex items-center gap-2">
+			<button id="btnSignIn"  type="button">Sign in</button>
+			<button id="btnSignOut" type="button" hidden>Sign out</button>
+			<span id="userBadge" style="margin-left:.5rem;"></span>
+		</div>
+
         <div id="messageBox" class="hidden p-3 mb-6 rounded-lg text-center font-medium transition-opacity duration-300 ease-in-out" role="alert"></div>
 
         <div id="globalLoadingIndicator" class="hidden text-center my-8 text-blue-600 font-semibold text-lg">
@@ -214,8 +220,7 @@
 							<span id="familyCityStateZip" class="detail-value"></span>
 							<span id="familyEmail" class="detail-value mt-2 text-indigo-600 font-semibold"></span>
 						</div>
-    <div id="updateMembershipContainer" class="detail-item">
-                        <div id="updateMembershipContainer" class="detail-item">
+						<div id="updateMembershipContainer" class="detail-item">
                             <span class="detail-label font-bold text-base mb-3 border-b pb-2">Membership Dates:</span>
                             <div class="flex items-end gap-4 pt-2">
                                 <div class="flex-grow space-y-3">
@@ -514,17 +519,108 @@
         </div>
     </div>
 
+<!-- Robust Amplify loader + init (with CDN fallback) -->
 <script>
-  // your API base stays the same
-  window.BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+  // Ensure BASE_API_URL exists
+  window.BASE_API_URL = window.BASE_API_URL || 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
 
-  // no Amplify, no token — just plain fetch
-  window.apiFetch = (path, init = {}) => fetch(window.BASE_API_URL + path, init);
+  (function () {
+    function initAmplify() {
+      if (!window.aws_amplify) {
+        console.error('Amplify UMD still not loaded');
+        return;
+      }
+      const { Amplify, Auth } = window.aws_amplify;
 
-  // tell app.js we're "ready" so it can start
-  window.dispatchEvent(new Event('auth-ready'));
+      Amplify.configure({
+        Auth: {
+          region: 'us-east-1',
+          userPoolId: 'us-east-1_DbvqrCJkl',
+          userPoolWebClientId: 'kd7ovn5929vlj8fpi1f7gvbv4',
+          oauth: {
+            domain: 'nelcm.auth.us-east-1.amazoncognito.com',
+            scope: ['openid','email','profile'],
+            redirectSignIn: window.location.origin + '/',
+            redirectSignOut: window.location.origin + '/',
+            responseType: 'code'
+          },
+          storage: window.localStorage
+        }
+      });
+
+      // expose for app.js
+      window.Auth = Auth;
+      window.apiFetch = async function (path, init = {}) {
+        try {
+          const t = (await Auth.currentSession()).getIdToken().getJwtToken();
+          init.headers = { ...(init.headers || {}), Authorization: `Bearer ${t}` };
+        } catch { /* not signed in; call may 401 */ }
+        return fetch(window.BASE_API_URL + path, init);
+      };
+
+	  <!-- inside initAmplify(), after setting window.apiFetch and wiring buttons -->
+	  window.dispatchEvent(new Event('auth-ready'));
+
+	  if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', () => {
+      if (window.apiFetch) startApp();
+        else window.addEventListener('auth-ready', startApp, { once: true });
+        });
+      } else {
+      if (window.apiFetch) startApp();
+        else window.addEventListener('auth-ready', startApp, { once: true });
+      }
+
+	  // optional: wire buttons if they exist
+      const btnIn  = document.getElementById('btnSignIn');
+      const btnOut = document.getElementById('btnSignOut');
+      const badge  = document.getElementById('userBadge');
+
+      //if (btnIn && !btnIn.__wired)  { btnIn.__wired  = true; btnIn.addEventListener('click', () => Auth.federatedSignIn()); }
+      //if (btnOut && !btnOut.__wired){ btnOut.__wired = true; btnOut.addEventListener('click', () => Auth.signOut()); }
+
+      // simple UI toggle
+      Auth.currentSession().then(s => {
+        btnIn && (btnIn.hidden = true);
+        btnOut && (btnOut.hidden = false);
+        if (badge) badge.textContent = s.getIdToken().payload.email || 'Signed in';
+      }).catch(() => {
+        btnIn && (btnIn.hidden = false);
+        btnOut && (btnOut.hidden = true);
+        if (badge) badge.textContent = '';
+      });
+    }
+
+    function loadAmplifyAndInit() {
+      // If loaded already, init now
+      if (window.aws_amplify) return initAmplify();
+
+      // Try unpkg first
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/aws-amplify@5/dist/aws-amplify.min.js';
+      s.defer = true;
+      s.onload = initAmplify;
+      s.onerror = function () {
+        // Fallback to jsDelivr pinned version
+        const f = document.createElement('script');
+        f.src = 'https://cdn.jsdelivr.net/npm/aws-amplify@5.3.21/dist/aws-amplify.min.js';
+        f.defer = true;
+        f.onload = initAmplify;
+        f.onerror = () => console.error('Failed to load Amplify from both CDNs');
+        document.head.appendChild(f);
+      };
+      document.head.appendChild(s);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadAmplifyAndInit);
+    } else {
+      loadAmplifyAndInit();
+    }
+  })();
 </script>
-    
+
 <script defer src="app.js"></script>
+
 </body>
 </html>

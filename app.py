@@ -1,5 +1,4 @@
 # V3 - Adjust Dates for birthday
-# Tried to add Login
 import pyodbc
 from flask import Flask, request, jsonify
 from flask_cors import CORS
