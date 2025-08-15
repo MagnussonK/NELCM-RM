@@ -21,7 +21,7 @@
 
         // --- Global Configuration ---
 		
-		window.BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+		window.BASE_API_URL = 'https://5cdg8ds4u2.execute-api.us-east-1.amazonaws.com/api';
 
         
 		// Get common DOM elements
