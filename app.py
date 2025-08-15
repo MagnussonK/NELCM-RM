@@ -704,6 +704,48 @@ def get_today_visits():
             cursor.close()
         if conn:
             conn.close()
-            
+  
+@app.route('/api/visits/today/grouped', methods=['GET'])
+def get_today_visits_grouped():
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    cursor = conn.cursor()
+    try:
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        tomorrow_start = today_start + timedelta(days=1)
+
+        # Group by family (member_id) and primary name/last_name (as stored on each visit)
+        sql = """
+            SELECT member_id,
+                   name,
+                   last_name,
+                   COUNT(*) AS visitors,
+                   MAX(visit_datetime) AS last_visit
+            FROM Visits
+            WHERE visit_datetime >= ? AND visit_datetime < ?
+            GROUP BY member_id, name, last_name
+            ORDER BY last_visit DESC
+        """
+        cursor.execute(sql, today_start, tomorrow_start)
+
+        cols = [c[0] for c in cursor.description]
+        rows = []
+        for r in cursor.fetchall():
+            row = dict(zip(cols, r))
+            row['last_visit'] = row['last_visit'].isoformat() if row.get('last_visit') else None
+            rows.append(row)
+
+        return jsonify(rows), 200
+    except pyodbc.Error as ex:
+        logging.error(f"Failed to fetch grouped visits: {ex}")
+        return jsonify({"error": "Could not retrieve grouped visits"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+  
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', port = 5000, debug=True)

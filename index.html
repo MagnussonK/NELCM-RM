@@ -977,8 +977,8 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time of Visit</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Family</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visitors</th>
                             </tr>
                         </thead>
                         <tbody id="todaysVisitsTableBody" class="bg-white divide-y divide-gray-200">
@@ -1277,40 +1277,38 @@
             showLoadingIndicator();
             try {
                 // Use the new API endpoint to get today's visits
-                const response = await fetch(`${BASE_API_URL}/visits/today`);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
-                }
+                const response = await fetch(`${BASE_API_URL}/visits/today/grouped`);
+				if (!response.ok) {
+					const errorData = await response.json();
+					throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorData.error || 'Unknown error'}`);
+				}
 
-                const visits = await response.json();
-                todaysVisitsTableBody.innerHTML = ''; // Clear previous data
+				const families = await response.json();
+				todaysVisitsTableBody.innerHTML = ''; // Clear previous data
 
-                if (visits.length === 0) {
-                    noVisitsMessage.classList.remove('hidden');
-                    todaysVisitsTableBody.parentElement.classList.add('hidden'); // Hide the table
-                } else {
-                    noVisitsMessage.classList.add('hidden');
-                    todaysVisitsTableBody.parentElement.classList.remove('hidden'); // Show the table
+				if (families.length === 0) {
+					noVisitsMessage.classList.remove('hidden');
+					todaysVisitsTableBody.parentElement.classList.add('hidden');
+				} else {
+				noVisitsMessage.classList.add('hidden');
+				todaysVisitsTableBody.parentElement.classList.remove('hidden');
 
-                    visits.forEach(visit => {
-                        const visitTime = new Date(visit.visit_datetime);
-                        const formattedTime = visitTime.toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        });
+				families.forEach(fam => {
+					const row = `
+						<tr>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-left">
+								${fam.name} ${fam.last_name}
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-left">
+								${fam.visitors}
+							</td>
+						</tr>`;
+					todaysVisitsTableBody.insertAdjacentHTML('beforeend', row);
+				});
+			}
 
-                        const row = `
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-left">${visit.name} ${visit.last_name}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-left">${formattedTime}</td>
-                        </tr>
-                    `;
-                        todaysVisitsTableBody.innerHTML += row;
-                    });
-                }
-
-                todaysVisitsModal.classList.remove('hidden');
+			todaysVisitsModal.classList.remove('hidden');
+			
             } catch (error) {
                 console.error('Error fetching today\'s visitors:', error);
                 showMessage(`Failed to fetch today's visitors: ${error.message}`, 'error');
