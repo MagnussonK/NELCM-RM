@@ -10,10 +10,19 @@ provider:
     role: IamRoleLambdaExecution
   httpApi:
     cors: true
+    authorizers:
+      cognitoJwt:
+        type: jwt
+        identitySource: "$request.header.Authorization"
+        issuerUrl: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_DbvqrCJkl"
+        audience:
+          - "kd7ovn5929vlj8fpi1f7gvbv4"
+          
   environment:
     LD_LIBRARY_PATH: /var/task/lib
     ODBCSYSINI: /var/task
     SQS_QUEUE_URL: !Ref RenewalEmailQueue
+
   ecr:
     images:
       appimage:
@@ -34,6 +43,8 @@ functions:
     timeout: 5
     events:
       - httpApi: 'ANY /api/{proxy+}'
+        authorizer:
+            name: cognitoJwt
 
 
   renewalEmailTrigger:
