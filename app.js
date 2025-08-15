@@ -20,7 +20,9 @@
         let allMemberVisitedDates = []; // Stores all visit dates for the current member as Date objects
 
         // --- Global Configuration ---
-		const BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+		
+		window.BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
+
         
 		// Get common DOM elements
 		const messageBox = document.getElementById('messageBox');
