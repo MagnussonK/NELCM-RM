@@ -518,72 +518,52 @@
         </div>
     </div>
 
-<!-- Amplify UMD build -->
-<script src="https://unpkg.com/aws-amplify@6.x/dist/aws-amplify.min.js"></script>
+<!-- 1) Point the SPA at your API Gateway, not the Amplify site -->
 <script>
-  // Pull the pieces we use off the UMD global
-  const { Amplify, Auth } = aws_amplify;
-
-  // ====== REQUIRED: your Cognito config (Hosted UI) ======
-  Amplify.configure({
-    Auth: {
-      region: 'us-east-1',
-      userPoolId: 'us-east-1_DbvqrCJkl',            // <-- your User Pool ID
-      userPoolWebClientId: 'kd7ovn5929vlj8fpi1f7gvbv4',  // <-- your App client ID (no secret)
-      oauth: {
-        domain: 'nelcm.auth.us-east-1.amazoncognito.com',  // <-- set Pool domain in console
-        scope: ['openid','email','profile'],
-        redirectSignIn: window.location.origin + '/',   // <-- add this exact URL in App client "Callback URLs"
-        redirectSignOut: window.location.origin + '/',  // <-- add in "Sign out URLs"
-        responseType: 'code'
-      },
-      storage: window.localStorage
-    }
-  });
-
-  // Simple auth-aware UI toggling
-  async function refreshAuthUI() {
-    const btnIn  = document.getElementById('btnSignIn');
-    const btnOut = document.getElementById('btnSignOut');
-    const badge  = document.getElementById('userBadge');
-
-    try {
-      const session = await Auth.currentSession();
-      const email = session.getIdToken().payload.email || 'Signed in';
-      btnIn.hidden  = true;
-      btnOut.hidden = false;
-      if (badge) badge.textContent = email;
-    } catch {
-      btnIn.hidden  = false;
-      btnOut.hidden = true;
-      if (badge) badge.textContent = '';
-    }
-  }
-
-  // Wire up buttons AFTER DOM is ready
-  window.addEventListener('DOMContentLoaded', () => {
-    const btnIn  = document.getElementById('btnSignIn');
-    const btnOut = document.getElementById('btnSignOut');
-
-    if (btnIn)  btnIn.addEventListener('click', () => Auth.federatedSignIn()); // launches Hosted UI
-    if (btnOut) btnOut.addEventListener('click', () => Auth.signOut());        // logs out & redirects
-
-    refreshAuthUI();
-  });
-
-  // Helper for your API calls (adds Authorization header)
-  async function apiFetch(path, init = {}) {
-    try {
-      const token = (await Auth.currentSession()).getIdToken().getJwtToken();
-      init.headers = { ...(init.headers || {}), Authorization: `Bearer ${token}` };
-    } catch (_) { /* not signed in; call will likely 401 */ }
-    const base = window.BASE_API_URL || ''; // keep your existing global
-    return fetch(`${base}${path}`, init);
-  }
-
-  // Expose apiFetch globally if you want to use it in app.js
-  window.apiFetch = apiFetch;
+  // Use your actual API Gateway base that fronts /api/{proxy+}
+  window.BASE_API_URL = 'https://7vyy10lcgd.execute-api.us-east-1.amazonaws.com/api';
 </script>
+
+<!-- 2) Load Amplify BEFORE you use it -->
+<script src="https://unpkg.com/aws-amplify@6/dist/aws-amplify.min.js" defer></script>
+
+<!-- 3) One-time Amplify init + apiFetch helper -->
+<script defer>
+  window.addEventListener('DOMContentLoaded', () => {
+    const A = window.aws_amplify;
+    if (!A) { console.error('Amplify UMD not loaded'); return; }
+
+    const { Amplify, Auth } = A;
+    Amplify.configure({
+      Auth: {
+        region: 'us-east-1',
+        userPoolId: 'us-east-1_DbvqrCJkl',
+        userPoolWebClientId: 'kd7ovn5929vlj8fpi1f7gvbv4',     // your Client ID
+        oauth: {
+          domain: 'nelcm.auth.us-east-1.amazoncognito.com',   // your Hosted UI domain (no https://)
+          scope: ['openid','email','profile'],
+          redirectSignIn: window.location.origin + '/',
+          redirectSignOut: window.location.origin + '/',
+          responseType: 'code'
+        },
+        storage: window.localStorage
+      }
+    });
+
+    // expose for app.js
+    window.Auth = Auth;
+    window.apiFetch = async (path, init = {}) => {
+      try {
+        const t = (await Auth.currentSession()).getIdToken().getJwtToken();
+        init.headers = { ...(init.headers || {}), Authorization: `Bearer ${t}` };
+      } catch { /* not signed in; will likely 401 */ }
+      return fetch(window.BASE_API_URL + path, init);
+    };
+  });
+</script>
+
+<!-- 4) Your app code LAST -->
 <script defer src="app.js"></script>
+
 </body>
 </html>
