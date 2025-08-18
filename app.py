@@ -757,20 +757,20 @@ def exit_get_questions():
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
 
-    cursor = conn.cursor()
+    cur = conn.cursor()
     try:
-        cursor.execute("""
+        cur.execute("""
             SELECT [number], [question]
             FROM dbo.exit_questions
             ORDER BY TRY_CAST([number] AS INT), [number]
         """)
-        rows = cursor.fetchall()
+        rows = cur.fetchall()
         return jsonify([{"number": str(r[0]), "question": r[1]} for r in rows]), 200
     except pyodbc.Error as ex:
         app.logger.error(f"Error fetching exit questions: {ex}")
         return jsonify({"error": "Database error fetching exit questions"}), 500
     finally:
-        try: cursor.close()
+        try: cur.close()
         except: pass
         try: conn.close()
         except: pass
@@ -796,28 +796,33 @@ def exit_post_answers():
         s = '' if v is None else str(v).strip()
         return s[:max_len]
 
-    now_utc = datetime.utcnow()
+    now_utc = datetime.utcnow()  # or use GETDATE() below
 
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
 
-    cursor = conn.cursor()
+    cur = conn.cursor()
     try:
-        cursor.fast_executemany = True
+        cur.fast_executemany = True
         rows = []
         for r in responses:
-            num = clean(r.get("number"), 5)
-            ans = clean(r.get("answer"), 50)
+            num = clean(r.get("number"), 5)   # varchar(5)
+            ans = clean(r.get("answer"), 50)  # varchar(50)
             if num and ans:
                 rows.append((num, ans, now_utc))
         if not rows:
             return jsonify({"error": "No valid responses to insert."}), 400
 
-        cursor.executemany("""
+        cur.executemany("""
             INSERT INTO dbo.exit_answers ([number],[answer],[time])
             VALUES (?, ?, ?)
         """, rows)
+
+        # If you prefer SQL Server's clock, use this instead:
+        # cur.executemany("INSERT INTO dbo.exit_answers ([number],[answer],[time]) VALUES (?, ?, GETDATE())",
+        #                 [(n, a) for (n, a, _) in rows])
+
         conn.commit()
         return jsonify({"inserted": len(rows)}), 201
     except pyodbc.Error as ex:
@@ -825,7 +830,7 @@ def exit_post_answers():
         app.logger.error(f"Error inserting exit answers: {ex}")
         return jsonify({"error": "Database error inserting exit answers"}), 500
     finally:
-        try: cursor.close()
+        try: cur.close()
         except: pass
         try: conn.close()
         except: pass
