@@ -752,24 +752,20 @@ def get_today_visits_grouped():
 # --- Exit Survey ---
 @app.route('/api/exit/questions', methods=['GET'])
 def exit_get_questions():
-    """
-    Returns all exit survey questions as:
-    [{ "number": "1", "question": "..." }, ...]
-    """
+    """Return all exit survey questions."""
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
 
     cursor = conn.cursor()
     try:
-        # If numbers are stored as text, casting helps with sort (optional)
         cursor.execute("""
             SELECT [number], [question]
             FROM dbo.exit_questions
             ORDER BY TRY_CAST([number] AS INT), [number]
         """)
         rows = cursor.fetchall()
-        return jsonify([{"number": r[0], "question": r[1]} for r in rows]), 200
+        return jsonify([{"number": str(r[0]), "question": r[1]} for r in rows]), 200
     except pyodbc.Error as ex:
         app.logger.error(f"Error fetching exit questions: {ex}")
         return jsonify({"error": "Database error fetching exit questions"}), 500
@@ -782,30 +778,25 @@ def exit_get_questions():
 @app.route('/api/exit/answers', methods=['POST'])
 def exit_post_answers():
     """
-    Accepts:
+    Body:
     {
       "responses": [
-        {"number": "1", "answer": "Yes"},
-        {"number": "2", "answer": "No"}
+        {"number":"1","answer":"5"},
+        {"number":"2","answer":"First-time visit"},
+        ...
       ]
     }
-
-    Inserts each response with the current server time into dbo.exit_answers.
     """
     payload = request.get_json(silent=True) or {}
-    responses: List[Dict] = payload.get("responses") or []
-
+    responses = payload.get("responses") or []
     if not isinstance(responses, list) or not responses:
         return jsonify({"error": "Body must include a non-empty 'responses' array."}), 400
 
-    # Enforce DB varchar lengths: number(5), answer(50)
-    def clean_str(v, max_len):
-        if v is None:
-            return ""
-        s = str(v).strip()
+    def clean(v, max_len):
+        s = '' if v is None else str(v).strip()
         return s[:max_len]
 
-    now_utc = datetime.utcnow()  # stored into SQL DATETIME
+    now_utc = datetime.utcnow()
 
     conn = get_db_connection()
     if conn is None:
@@ -814,25 +805,21 @@ def exit_post_answers():
     cursor = conn.cursor()
     try:
         cursor.fast_executemany = True
-        to_insert = []
+        rows = []
         for r in responses:
-            num = clean_str(r.get("number", ""), 5)
-            ans = clean_str(r.get("answer", ""), 50)
-            if not num or not ans:
-                # Skip invalid rows rather than failing the whole request
-                continue
-            to_insert.append((num, ans, now_utc))
-
-        if not to_insert:
+            num = clean(r.get("number"), 5)
+            ans = clean(r.get("answer"), 50)
+            if num and ans:
+                rows.append((num, ans, now_utc))
+        if not rows:
             return jsonify({"error": "No valid responses to insert."}), 400
 
         cursor.executemany("""
-            INSERT INTO dbo.exit_answers ([number], [answer], [time])
+            INSERT INTO dbo.exit_answers ([number],[answer],[time])
             VALUES (?, ?, ?)
-        """, to_insert)
-
+        """, rows)
         conn.commit()
-        return jsonify({"inserted": len(to_insert)}), 201
+        return jsonify({"inserted": len(rows)}), 201
     except pyodbc.Error as ex:
         conn.rollback()
         app.logger.error(f"Error inserting exit answers: {ex}")
