@@ -13,6 +13,8 @@ import boto3
 from botocore.exceptions import ClientError
 from flask.json.provider import JSONProvider
 
+from typing import List, Dict
+
 # --- Robust JSON Handling ---
 # This custom class teaches Flask how to handle special data types like dates
 # and decimals, preventing the app from crashing during JSON conversion.
@@ -747,5 +749,99 @@ def get_today_visits_grouped():
         if conn:
             conn.close()
   
+# --- Exit Survey ---
+@app.route('/api/exit/questions', methods=['GET'])
+def exit_get_questions():
+    """
+    Returns all exit survey questions as:
+    [{ "number": "1", "question": "..." }, ...]
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    cursor = conn.cursor()
+    try:
+        # If numbers are stored as text, casting helps with sort (optional)
+        cursor.execute("""
+            SELECT [number], [question]
+            FROM dbo.exit_questions
+            ORDER BY TRY_CAST([number] AS INT), [number]
+        """)
+        rows = cursor.fetchall()
+        return jsonify([{"number": r[0], "question": r[1]} for r in rows]), 200
+    except pyodbc.Error as ex:
+        app.logger.error(f"Error fetching exit questions: {ex}")
+        return jsonify({"error": "Database error fetching exit questions"}), 500
+    finally:
+        try: cursor.close()
+        except: pass
+        try: conn.close()
+        except: pass
+
+@app.route('/api/exit/answers', methods=['POST'])
+def exit_post_answers():
+    """
+    Accepts:
+    {
+      "responses": [
+        {"number": "1", "answer": "Yes"},
+        {"number": "2", "answer": "No"}
+      ]
+    }
+
+    Inserts each response with the current server time into dbo.exit_answers.
+    """
+    payload = request.get_json(silent=True) or {}
+    responses: List[Dict] = payload.get("responses") or []
+
+    if not isinstance(responses, list) or not responses:
+        return jsonify({"error": "Body must include a non-empty 'responses' array."}), 400
+
+    # Enforce DB varchar lengths: number(5), answer(50)
+    def clean_str(v, max_len):
+        if v is None:
+            return ""
+        s = str(v).strip()
+        return s[:max_len]
+
+    now_utc = datetime.utcnow()  # stored into SQL DATETIME
+
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    cursor = conn.cursor()
+    try:
+        cursor.fast_executemany = True
+        to_insert = []
+        for r in responses:
+            num = clean_str(r.get("number", ""), 5)
+            ans = clean_str(r.get("answer", ""), 50)
+            if not num or not ans:
+                # Skip invalid rows rather than failing the whole request
+                continue
+            to_insert.append((num, ans, now_utc))
+
+        if not to_insert:
+            return jsonify({"error": "No valid responses to insert."}), 400
+
+        cursor.executemany("""
+            INSERT INTO dbo.exit_answers ([number], [answer], [time])
+            VALUES (?, ?, ?)
+        """, to_insert)
+
+        conn.commit()
+        return jsonify({"inserted": len(to_insert)}), 201
+    except pyodbc.Error as ex:
+        conn.rollback()
+        app.logger.error(f"Error inserting exit answers: {ex}")
+        return jsonify({"error": "Database error inserting exit answers"}), 500
+    finally:
+        try: cursor.close()
+        except: pass
+        try: conn.close()
+        except: pass
+
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', port = 5000, debug=True)
